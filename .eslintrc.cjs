@@ -19,6 +19,6 @@ module.exports = {
   },
   ignorePatterns: ['git-precommit-checks.config.js'],
   rules: {
-    'prettier/prettier': 'error',
+    'prettier/prettier': ['error', { endOfLine: 'auto' }],
   },
 };
