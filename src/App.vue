@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import ShaderScreen from './components/ShaderScreen.vue'
+import ShaderScreen from './components/ShaderScreen.vue';
 </script>
 
 <template>
