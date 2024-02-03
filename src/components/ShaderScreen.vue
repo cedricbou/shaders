@@ -5,6 +5,9 @@ import { rendererInit } from './render/ThreeRenderer';
 import * as E from 'fp-ts/lib/Either';
 import * as F from 'fp-ts/lib/function';
 
+import fragmentShader from '../assets/shaders/starrycube.frag.glsl?raw';
+import vertexShader from '../assets/shaders/starrycube.vert.glsl?raw';
+
 const props = defineProps<{
   forceError?: string;
 }>();
@@ -26,8 +29,13 @@ const createCamera = function (renderer: THREE.WebGLRenderer): THREE.Camera {
 
 const createCube = function (): THREE.Mesh {
   const geometry = new THREE.BoxGeometry(3.5, 3.5, 3.5);
-  const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-  const cube = new THREE.Mesh(geometry, material);
+  // const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+  const shaderMaterial = new THREE.ShaderMaterial({
+    uniforms: {},
+    vertexShader,
+    fragmentShader,
+  });
+  const cube = new THREE.Mesh(geometry, shaderMaterial);
   return cube;
 };
 
