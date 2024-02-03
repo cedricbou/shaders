@@ -17,6 +17,7 @@ module.exports = {
     },
     project: './tsconfig.json',
   },
+  ignorePatterns: ['git-precommit-checks.config.js'],
   rules: {
     'prettier/prettier': 'error',
   },
