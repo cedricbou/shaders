@@ -25,7 +25,7 @@ const createCamera = function (renderer: THREE.WebGLRenderer): THREE.Camera {
 };
 
 const createCube = function (): THREE.Mesh {
-  const geometry = new THREE.BoxGeometry();
+  const geometry = new THREE.BoxGeometry(3.5, 3.5, 3.5);
   const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
   const cube = new THREE.Mesh(geometry, material);
   return cube;
