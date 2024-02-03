@@ -43,9 +43,9 @@
     }
   },
   "lint-staged": {
-    "src/**/*.{ts,tsx}": [
-      "eslint --fix",
-      "vitest run"
+    "src/**/*.{ts,tsx,vue}": [
+      "eslint --fix src",
+      "vitest --passWithNoTests run"
     ]
   }
 }

@@ -5,9 +5,9 @@ import { rendererInit } from './render/ThreeRenderer';
 import * as E from 'fp-ts/lib/Either';
 import * as F from 'fp-ts/lib/function';
 
-const props = defineProps({
-  forceError: String,
-});
+const props = defineProps<{
+  forceError?: string;
+}>();
 
 const shaderScreen: Ref<HTMLCanvasElement | undefined> = ref();
 const errorMsg: Ref<string | undefined> = ref();
