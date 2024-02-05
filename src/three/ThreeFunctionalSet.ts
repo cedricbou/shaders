@@ -2,7 +2,8 @@
  * Import THREE, the 3D library we are going to use.
  */
 import * as THREE from 'three';
-import * as ADDONS from 'three/addons';
+
+import { createOrbitControl } from './ThreeHelpers';
 
 /**
  * Import fp-ts, a functional programming library for TypeScript.
@@ -10,90 +11,121 @@ import * as ADDONS from 'three/addons';
  */
 import * as E from 'fp-ts/lib/Either';
 import * as F from 'fp-ts/lib/function';
-import { createPrinter } from 'typescript';
-
 
 /**
  * A Scenery is a collection of static assets used to build a 3D scene.
  */
-export type Scenery = {
-
-};
+// export type Scenery = {};
 
 /**
  * A TechnicalSet is a collection of technical assets used to render a 3D scene.
  * For exemple it includes, cameras, lights, and other technical assets.
  */
 export type TechnicalSet = {
-    renderer: THREE.WebGLRenderer;
-    camera: THREE.PerspectiveCamera;
+  renderer: THREE.WebGLRenderer;
+  camera: THREE.Camera;
+  scene: THREE.Scene;
 };
 
 /**
  * ActorsAndAction is a collection of dynamic assets used to animate a 3D scene.
  * Their characteristics and state depends on time and user input.
  */
-export type ActorsAndAction = {
+// export type ActorsAndAction = {};
 
-};
+/**
+ * Transform a Canvas to a WebGLRenderer
+ */
+export function createRenderer(
+  canvas: HTMLCanvasElement | undefined,
+): E.Either<string, THREE.WebGLRenderer> {
+  return F.pipe(
+    E.Do,
+    E.apS('canvas', E.fromNullable('canvas is not defined')(canvas)),
+    E.bind('context', ({ canvas }) =>
+      E.fromNullable('Failed to get webgl2 context from canvas')(
+        canvas.getContext('webgl2'),
+      ),
+    ),
+    E.bind('rect', ({ canvas }) => {
+      if (canvas.getClientRects().length === 0) {
+        return E.left('no client rect found');
+      }
+      return E.right(canvas.getClientRects()[0]);
+    }),
+    E.map(({ rect, canvas, context }) => {
+      const renderer = new THREE.WebGLRenderer({ canvas, context });
+      renderer.setSize(rect.width, rect.height);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      return renderer;
+    }),
+  );
+}
 
 /**
  * A CreateTechnicalSet to initialize all technical assets
  */
-export type CreateTechnicalSet = (canvas: HTMLCanvasElement | undefined) => E.Either<string, TechnicalSet>;
+export type CreateTechnicalSet = (
+  renderer: E.Either<string, THREE.WebGLRenderer>,
+) => E.Either<string, TechnicalSet>;
 
-export type TechnicalSetWithCamera = (set: TechnicalSet) => (camera: THREE.PerspectiveCamera) => TechnicalSet;
+/**
+ * Create a default TechnicalSet with a perspective camera and default scene.
+ */
+export const defaultTechnicalSet: CreateTechnicalSet = (renderer) => {
+  return F.pipe(
+    renderer,
+    E.map((renderer) => {
+      const camera = new THREE.PerspectiveCamera();
+      const scene = new THREE.Scene();
+      return { renderer, camera, scene };
+    }),
+  );
+};
 
-export const withPerspectiveCamera: TechnicalSetWithCamera = (set) => (camera) => {
-    return { ...set, camera: camera };
+/**
+ * Update camera position in a technical set.
+ */
+export function updateCameraPosition(
+  technicalSet: E.Either<string, TechnicalSet>,
+  position: THREE.Vector3,
+): E.Either<string, TechnicalSet> {
+  return F.pipe(
+    technicalSet,
+    E.map((set) => {
+      set.camera.position.copy(position);
+      return set;
+    }),
+  );
 }
 
-export const defaultTechnicalSet: CreateTechnicalSet = (canvas) => {
-    return F.pipe(
-        E.Do,
-        E.apS('canvas', E.fromNullable('canvas is not defined')(canvas)),
-        E.bind('context', ({ canvas }) =>
-            E.fromNullable('Failed to get webgl2 context from canvas')(
-                canvas.getContext('webgl2'),
-            ),
-        ),
-        E.map(({ canvas, context }) => {
-            const renderer = new THREE.WebGLRenderer({ canvas, context });
-            const width = canvas.getClientRects()[0].width;
-            const height = canvas.getClientRects()[0].height;
-            renderer.setSize(width, height);
-            renderer.setPixelRatio(window.devicePixelRatio); // TODO: Is this needed?
-            return { renderer: renderer } as TechnicalSet;
-        }),
-    );
+/**
+ * Add a default light to the technical set.
+ */
+export function addDefaultLight(
+  technicalSet: E.Either<string, TechnicalSet>,
+): E.Either<string, TechnicalSet> {
+  return F.pipe(
+    technicalSet,
+    E.map((set) => {
+      const light = new THREE.AmbientLight(0xffffff);
+      set.scene.add(light);
+      return set;
+    }),
+  );
 }
 
-
-const c = F.pipe(
-    document.getElementById('canvas') as HTMLCanvasElement,
-    defaultTechnicalSet,
-    E.map((set) => { return withPerspectiveCamera(set)(new THREE.PerspectiveCamera()); }),
-);
-
-console.log(typeof c);
-
-
-/**{
-    return F.pipe(
-        E.Do,
-        E.apS('canvas', E.fromNullable('canvas is not defined')(canvas)),
-        E.bind('width', ({ canvas }) => E.right(canvas.width)),
-        E.bind('height', ({ canvas }) => E.right(canvas.height)),
-        E.bind('context', ({ canvas }) =>
-            E.fromNullable('Failed to get webgl2 context from canvas')(
-                canvas.getContext('webgl2'),
-            ),
-        ),
-        E.map(({ width, height, context }) => {
-            const renderer = new THREE.WebGLRenderer({ canvas, context });
-            renderer.setSize(width, height);
-            renderer.setPixelRatio(window.devicePixelRatio); // TODO: Is this needed?
-            return renderer;
-        }),
-    );
-}; */
+/**
+ * Add an orbit control to the technical set.
+ */
+export function addOrbitControl(
+  technicalSet: E.Either<string, TechnicalSet>,
+): E.Either<string, TechnicalSet> {
+  return F.pipe(
+    technicalSet,
+    E.map((set) => {
+      createOrbitControl(set.camera, set.renderer.domElement);
+      return set;
+    }),
+  );
+}
