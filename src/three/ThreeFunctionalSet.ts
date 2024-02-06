@@ -3,7 +3,7 @@
  */
 import * as THREE from 'three';
 
-import { createOrbitControl } from './ThreeHelpers';
+import { createOrbitControl, createStageGrid } from './ThreeHelpers';
 
 /**
  * Import fp-ts, a functional programming library for TypeScript.
@@ -18,6 +18,11 @@ import * as F from 'fp-ts/lib/function';
 // export type Scenery = {};
 
 /**
+ * An animator function update a state according to time and user input.
+ */
+export type Animator = (time: number) => void;
+
+/**
  * A TechnicalSet is a collection of technical assets used to render a 3D scene.
  * For exemple it includes, cameras, lights, and other technical assets.
  */
@@ -25,6 +30,8 @@ export type TechnicalSet = {
   renderer: THREE.WebGLRenderer;
   camera: THREE.Camera;
   scene: THREE.Scene;
+  animators: Array<Animator>;
+  clock: THREE.Clock;
 };
 
 /**
@@ -63,6 +70,60 @@ export function createRenderer(
 }
 
 /**
+ * Render the scene in the technical set.
+ * TODO: This function is probably useless, we should remove it.
+ */
+export function renderScene(): (
+  technicalSet: E.Either<string, TechnicalSet>,
+) => E.Either<string, TechnicalSet> {
+  return F.flow(
+    E.map((set) => {
+      console.log('rendering');
+      set.renderer.render(set.scene, set.camera);
+      return set;
+    }),
+  );
+}
+
+/**
+ * Start an animation loop to render the scene in the technical set.
+ */
+export function startAnimationLoop(
+  animate: () => void,
+): (
+  technicalSet: E.Either<string, TechnicalSet>,
+) => E.Either<string, TechnicalSet> {
+  return F.flow(
+    E.map((set) => {
+      const animateLoop = () => {
+        animate();
+
+        // TODO refactor this to use smaller functions
+
+        // Loop over all animators
+        const delta = set.clock.getDelta();
+        set.animators.forEach((animator) => {
+          animator(delta);
+        });
+
+        // Render the scene
+        set.renderer.render(set.scene, set.camera);
+
+        // Loop for the next frame
+        requestAnimationFrame(animateLoop);
+      };
+
+      // Start the stage clock
+      set.clock.start();
+
+      // Start the animation loop
+      requestAnimationFrame(animateLoop);
+      return set;
+    }),
+  );
+}
+
+/**
  * A CreateTechnicalSet to initialize all technical assets
  */
 export type CreateTechnicalSet = (
@@ -72,13 +133,27 @@ export type CreateTechnicalSet = (
 /**
  * Create a default TechnicalSet with a perspective camera and default scene.
  */
-export const defaultTechnicalSet: CreateTechnicalSet = (renderer) => {
+export const createDefaultTechnicalSet: CreateTechnicalSet = (renderer) => {
   return F.pipe(
     renderer,
     E.map((renderer) => {
-      const camera = new THREE.PerspectiveCamera();
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        renderer.domElement.width / renderer.domElement.height,
+        0.1,
+        1000,
+      );
       const scene = new THREE.Scene();
-      return { renderer, camera, scene };
+
+      // TODO: it is possible to return a TechnicalSet without a clock, and starting the clock crash. See how to solve this.
+      const set: TechnicalSet = {
+        renderer,
+        camera,
+        scene,
+        animators: [],
+        clock: new THREE.Clock(),
+      };
+      return set;
     }),
   );
 };
@@ -87,11 +162,11 @@ export const defaultTechnicalSet: CreateTechnicalSet = (renderer) => {
  * Update camera position in a technical set.
  */
 export function updateCameraPosition(
-  technicalSet: E.Either<string, TechnicalSet>,
   position: THREE.Vector3,
-): E.Either<string, TechnicalSet> {
-  return F.pipe(
-    technicalSet,
+): (
+  technicalSet: E.Either<string, TechnicalSet>,
+) => E.Either<string, TechnicalSet> {
+  return F.flow(
     E.map((set) => {
       set.camera.position.copy(position);
       return set;
@@ -125,6 +200,38 @@ export function addOrbitControl(
     technicalSet,
     E.map((set) => {
       createOrbitControl(set.camera, set.renderer.domElement);
+      return set;
+    }),
+  );
+}
+
+/**
+ * Add a grid to the technical set.
+ */
+export function addDefaultGrid(
+  technicalSet: E.Either<string, TechnicalSet>,
+): E.Either<string, TechnicalSet> {
+  return F.pipe(
+    technicalSet,
+    E.map((set) => {
+      const grid = createStageGrid(30);
+      set.scene.add(grid);
+      return set;
+    }),
+  );
+}
+
+/**
+ * Add an animator to the technical set.
+ */
+export function addAnimator(
+  animate: (time: number) => void,
+): (
+  technicalSet: E.Either<string, TechnicalSet>,
+) => E.Either<string, TechnicalSet> {
+  return F.flow(
+    E.map((set) => {
+      set.animators.push(animate);
       return set;
     }),
   );

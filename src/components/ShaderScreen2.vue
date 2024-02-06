@@ -4,13 +4,13 @@ import { onMounted, Ref, ref } from 'vue';
 /**
  * Import THREE, the 3D library we are going to use.
  */
-// import * as THREE from 'three';
+import * as THREE from 'three';
 
 /**
  * Import fp-ts, a functional programming library for TypeScript.
  * We are going to use it to handle errors and to chain.
  */
-// import * as E from 'fp-ts/lib/Either';
+import * as E from 'fp-ts/lib/Either';
 import * as F from 'fp-ts/lib/function';
 
 import * as TF from '../three/ThreeFunctionalSet';
@@ -29,13 +29,64 @@ onMounted(() => {
     return;
   }
 
-  const set = F.pipe(
+  // Initialise the stage
+  const stage = F.pipe(
     TF.createRenderer(shaderScreen.value),
-    TF.defaultTechnicalSet,
-    // TF.updateCameraPosition(new Vector3(3, 5, 10)),
+    TF.createDefaultTechnicalSet,
+    TF.updateCameraPosition(new THREE.Vector3(3, 5, 10)),
+    TF.addDefaultLight,
+    TF.addDefaultGrid,
+    TF.addOrbitControl,
+    TF.startAnimationLoop(TF.renderScene),
   );
 
-  return set;
+  // Test animations ?
+  // Add the cube to the scene
+
+  // TODO : create helper functions for this and try quaternions rotation
+  // TODO : then add shader material animated with uniforms
+
+  const cubeGeometry = new THREE.BoxGeometry(2, 2, 2);
+  const cubeMaterial = new THREE.MeshStandardMaterial({
+    color: 0x00ff00,
+    roughness: 0.5,
+    metalness: 0.5,
+  });
+  const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+  const rotatingCube: TF.Animator = function (time: number) {
+    cube.rotation.x += 0.1 * time;
+    cube.rotation.y += 0.1 * time;
+  };
+
+  // Test scene
+  F.pipe(
+    stage,
+    TF.addAnimator(rotatingCube),
+    E.fold(
+      (error) => {
+        errorMsg.value = error;
+      },
+      (stage) => {
+        console.log('Stage initialised! {}', stage);
+
+        stage.scene.add(cube);
+
+        // Add the sphere to the scene
+        const sphereGeometry = new THREE.SphereGeometry(1.5);
+        const sphereMaterial = new THREE.MeshStandardMaterial({
+          color: 0x0000ff,
+          roughness: 0.3,
+          metalness: 0.8,
+        });
+        stage.scene.add(
+          new THREE.Mesh(sphereGeometry, sphereMaterial).translateOnAxis(
+            new THREE.Vector3(1, 1, -1),
+            2,
+          ),
+        );
+      },
+    ),
+  );
 });
 </script>
 

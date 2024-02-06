@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import ShaderScreen from './components/ShaderScreen.vue';
+import ShaderScreen2 from './components/ShaderScreen2.vue';
 </script>
 
 <template>
-  <ShaderScreen />
+  <ShaderScreen2 />
 </template>
 
 <style scoped>
