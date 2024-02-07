@@ -3,7 +3,7 @@
  */
 import * as THREE from 'three';
 
-import * as CONTROLS from './primitives/controls';
+import * as CONTROLS from './primitives/Controls';
 
 /**
  * Import fp-ts, a functional programming library for TypeScript.
