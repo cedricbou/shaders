@@ -3,6 +3,7 @@ import { mock } from 'vitest-mock-extended';
 
 import * as CONTROLS from './Controls';
 import { OrbitControls } from 'three/addons';
+import { a } from 'vitest/dist/suite-ghspeorC.js';
 
 vi.mock('three');
 
@@ -14,7 +15,8 @@ describe('createStageGrid', () => {
 
   test('create a 10 unit wide stage grid produce a default grid with 10 division, teal quadrant and green axis', async () => {
     const three = await import('three');
-    const color = (await vi.importActual('three')).Color;
+    const color = ((await vi.importActual('three')) as typeof import('three'))
+      .Color;
 
     const grid = CONTROLS.createStageGrid(10);
 
@@ -32,7 +34,7 @@ describe('createStageGrid', () => {
 
 describe('createOrbitControl', () => {
   test('createOrbitControl should return a new instance of OrbitControls with damping enabled', async () => {
-    const three = await vi.importActual('three');
+    const three = (await vi.importActual('three')) as typeof import('three');
 
     const camera = new three.PerspectiveCamera();
 
