@@ -92,10 +92,19 @@ onMounted(() => {
 
 <template>
   <div id="shader-screen-lame">
-    <div v-show="errorMsg !== undefined" id="shader-screen-loading-error" class="loading-error">
+    <div
+      v-show="errorMsg !== undefined"
+      id="shader-screen-loading-error"
+      class="loading-error"
+    >
       {{ errorMsg }}
     </div>
-    <canvas id="shader-screen" ref="shaderScreen" width="1024" height="600"></canvas>
+    <canvas
+      id="shader-screen"
+      ref="shaderScreen"
+      width="1024"
+      height="600"
+    ></canvas>
   </div>
 </template>
 
