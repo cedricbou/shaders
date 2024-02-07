@@ -3,7 +3,7 @@
  */
 import * as THREE from 'three';
 
-import { createOrbitControl, createStageGrid } from './ThreeHelpers';
+import * as CONTROLS from './primitives/controls';
 
 /**
  * Import fp-ts, a functional programming library for TypeScript.
@@ -199,7 +199,7 @@ export function addOrbitControl(
   return F.pipe(
     technicalSet,
     E.map((set) => {
-      createOrbitControl(set.camera, set.renderer.domElement);
+      CONTROLS.createOrbitControl(set.camera, set.renderer.domElement);
       return set;
     }),
   );
@@ -214,7 +214,7 @@ export function addDefaultGrid(
   return F.pipe(
     technicalSet,
     E.map((set) => {
-      const grid = createStageGrid(30);
+      const grid = CONTROLS.createStageGrid(30);
       set.scene.add(grid);
       return set;
     }),

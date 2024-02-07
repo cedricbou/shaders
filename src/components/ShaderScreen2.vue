@@ -13,7 +13,7 @@ import * as THREE from 'three';
 import * as E from 'fp-ts/lib/Either';
 import * as F from 'fp-ts/lib/function';
 
-import * as TF from '../three/ThreeFunctionalSet';
+import * as SS from '../fp-render/StageSet';
 
 const props = defineProps<{
   forceError?: string;
@@ -31,13 +31,13 @@ onMounted(() => {
 
   // Initialise the stage
   const stage = F.pipe(
-    TF.createRenderer(shaderScreen.value),
-    TF.createDefaultTechnicalSet,
-    TF.updateCameraPosition(new THREE.Vector3(3, 5, 10)),
-    TF.addDefaultLight,
-    TF.addDefaultGrid,
-    TF.addOrbitControl,
-    TF.startAnimationLoop(TF.renderScene),
+    SS.createRenderer(shaderScreen.value),
+    SS.createDefaultTechnicalSet,
+    SS.updateCameraPosition(new THREE.Vector3(3, 5, 10)),
+    SS.addDefaultLight,
+    SS.addDefaultGrid,
+    SS.addOrbitControl,
+    SS.startAnimationLoop(SS.renderScene),
   );
 
   // Test animations ?
@@ -53,7 +53,7 @@ onMounted(() => {
     metalness: 0.5,
   });
   const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-  const rotatingCube: TF.Animator = function (time: number) {
+  const rotatingCube: SS.Animator = function (time: number) {
     cube.rotation.x += 0.1 * time;
     cube.rotation.y += 0.1 * time;
   };
@@ -61,7 +61,7 @@ onMounted(() => {
   // Test scene
   F.pipe(
     stage,
-    TF.addAnimator(rotatingCube),
+    SS.addAnimator(rotatingCube),
     E.fold(
       (error) => {
         errorMsg.value = error;
@@ -92,19 +92,10 @@ onMounted(() => {
 
 <template>
   <div id="shader-screen-lame">
-    <div
-      v-show="errorMsg !== undefined"
-      id="shader-screen-loading-error"
-      class="loading-error"
-    >
+    <div v-show="errorMsg !== undefined" id="shader-screen-loading-error" class="loading-error">
       {{ errorMsg }}
     </div>
-    <canvas
-      id="shader-screen"
-      ref="shaderScreen"
-      width="1024"
-      height="600"
-    ></canvas>
+    <canvas id="shader-screen" ref="shaderScreen" width="1024" height="600"></canvas>
   </div>
 </template>
 
@@ -142,3 +133,4 @@ onMounted(() => {
   }
 }
 </style>
+../fp-render/ThreeFunctionalSet../fp-render/StageSet
