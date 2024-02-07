@@ -3,7 +3,6 @@ import { mock } from 'vitest-mock-extended';
 
 import * as CONTROLS from './Controls';
 import { OrbitControls } from 'three/addons';
-import { a } from 'vitest/dist/suite-ghspeorC.js';
 
 vi.mock('three');
 
