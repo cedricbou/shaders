@@ -1,4 +1,4 @@
-import { describe, expect, test, vi, expectTypeOf } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { TechnicalSet, addDefaultLight } from './StageSet';
 import * as E from 'fp-ts/lib/Either';
 
