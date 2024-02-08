@@ -7,5 +7,8 @@ export default defineConfig({
   plugins: [vue()],
   test: {
     globals: true,
+    coverage: {
+      provider: 'v8',
+    },
   },
 });
