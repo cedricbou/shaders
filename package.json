@@ -33,7 +33,7 @@
     "eslint-plugin-vitest": "^0.3.22",
     "eslint-plugin-vue": "^9.21.1",
     "glslify": "^7.1.1",
-    "husky": "^8.0.0",
+    "husky": "^9.0.0",
     "jsdom": "^24.0.0",
     "lint-staged": "^15.2.1",
     "prettier": "^3.2.4",
