@@ -10,6 +10,6 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
     },
-    environment: 'jsdom',
+    // environment: 'jsdom',
   },
 });

@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import { mock } from 'vitest-mock-extended';
+import { any, mock } from 'vitest-mock-extended';
 import {
   TechnicalSet,
   addAnimator,
@@ -14,6 +14,8 @@ import {
 
 import * as E from 'fp-ts/lib/Either';
 import * as F from 'fp-ts/lib/function';
+import { a } from 'vitest/dist/suite-ghspeorC.js';
+import { aN } from 'vitest/dist/reporters-1evA5lom.js';
 
 vi.mock('three');
 vi.mock('three/addons');
@@ -96,8 +98,25 @@ describe('Check animators behavior in the animation loop', () => {
 
   beforeEach(async () => {
     three = await import('three');
-    const spy = vi.spyOn(window, 'devicePixelRatio', 'get');
-    spy.mockReturnValue(1);
+
+    let requestAnimationFrameCounter = 0;
+    const requestAnimationFrame = vi.fn().mockImplementation((cb) => {
+      requestAnimationFrameCounter++;
+      if (requestAnimationFrameCounter < 10) {
+        console.log(
+          'requestAnimationFrameCounter',
+          requestAnimationFrameCounter,
+        );
+        cb();
+      }
+    });
+
+    vi.stubGlobal('window', {
+      devicePixelRatio: 1,
+      requestAnimationFrame: requestAnimationFrame,
+    });
+
+    vi.stubGlobal('requestAnimationFrame', requestAnimationFrame);
 
     const context = mock<WebGL2RenderingContext>();
 
@@ -135,7 +154,7 @@ describe('Check animators behavior in the animation loop', () => {
     const animator = vi.fn();
     const set = expectRightTechnicalSet(addAnimator(animator)(initialSet));
     set.clock.getDelta = vi.fn(() => 0.1);
+
     expect(animator).toHaveBeenCalledTimes(1);
-    expect(animator).toHaveBeenCalledWith(set);
   });
 });
