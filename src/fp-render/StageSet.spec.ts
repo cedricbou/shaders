@@ -1,12 +1,19 @@
 import { describe, expect, test, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import {
   TechnicalSet,
+  addAnimator,
   addDefaultGrid,
   addDefaultLight,
   addOrbitControl,
+  createRenderer,
+  createDefaultTechnicalSet,
+  startAnimationLoop,
+  renderScene,
 } from './StageSet';
 
 import * as E from 'fp-ts/lib/Either';
+import * as F from 'fp-ts/lib/function';
 
 vi.mock('three');
 vi.mock('three/addons');
@@ -73,5 +80,62 @@ describe('StageSet modifiers', () => {
     expect(three.GridHelper).toHaveBeenCalledTimes(1);
     expect(set.scene.add).toHaveBeenCalledTimes(1);
     expect(set.scene.add).toHaveBeenCalledWith(expect.any(three.GridHelper));
+  });
+
+  test('should be able to add an animator to the technical set', async () => {
+    const animator = vi.fn();
+    const set = expectRightTechnicalSet(addAnimator(animator)(initialSet));
+    expect(set.animators).toContain(animator);
+    expect(set.animators.length).toBe(1);
+  });
+});
+
+describe('Check animators behavior in the animation loop', () => {
+  let initialSet: E.Either<string, TechnicalSet>;
+  let three: typeof import('three');
+
+  beforeEach(async () => {
+    three = await import('three');
+    const spy = vi.spyOn(window, 'devicePixelRatio', 'get');
+    spy.mockReturnValue(1);
+
+    const context = mock<WebGL2RenderingContext>();
+
+    const rect = mock<DOMRect>();
+    rect.width = 100;
+    rect.height = 100;
+
+    const rectList = mock<DOMRectList>();
+    rectList.item.mockReturnValue(rect);
+
+    const canvas = mock<HTMLCanvasElement>();
+    canvas.getContext.mockReturnValue(context);
+    canvas.getClientRects.mockReturnValue(rectList);
+
+    const renderer = mock<THREE.WebGLRenderer>();
+    renderer.domElement = canvas;
+    renderer.getSize.mockReturnValue(new three.Vector2(100, 100));
+    vi.mocked(three.WebGLRenderer).mockReturnValue(mock<THREE.WebGLRenderer>());
+
+    // Initialise the stage
+    initialSet = F.pipe(
+      canvas,
+      createRenderer,
+      createDefaultTechnicalSet,
+      startAnimationLoop(renderScene),
+    );
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.resetAllMocks();
+  });
+
+  test('add an animator to the technical stage and check it is called in the animation loop', async () => {
+    const animator = vi.fn();
+    const set = expectRightTechnicalSet(addAnimator(animator)(initialSet));
+    set.clock.getDelta = vi.fn(() => 0.1);
+    expect(animator).toHaveBeenCalledTimes(1);
+    expect(animator).toHaveBeenCalledWith(set);
   });
 });
