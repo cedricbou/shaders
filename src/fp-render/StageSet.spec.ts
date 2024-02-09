@@ -220,7 +220,7 @@ describe('Check animators behavior in the animation loop', () => {
           return E.right(set);
         }),
         addAnimator(animator),
-        startAnimationLoop(),
+        startAnimationLoop,
       ),
     );
 
@@ -234,7 +234,11 @@ describe('Check animators behavior in the animation loop', () => {
     const canvas = mock<HTMLCanvasElement>();
     const rectList = mock<DOMRectList>();
     rectList.item.mockReturnValue(null);
-    rectList.length = 0;
+    Object.defineProperty(rectList, 'length', {
+      get: () => {
+        return 0;
+      },
+    });
     canvas.getClientRects.mockReturnValue(rectList);
     canvas.getContext.mockReturnValue(mock<WebGL2RenderingContext>());
 

@@ -37,7 +37,7 @@ onMounted(() => {
     SS.addDefaultLight,
     SS.addDefaultGrid,
     SS.addOrbitControl,
-    SS.startAnimationLoop(SS.renderScene),
+    SS.startAnimationLoop,
   );
 
   // Test animations ?

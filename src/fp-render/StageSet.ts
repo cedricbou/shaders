@@ -70,30 +70,13 @@ export function createRenderer(
 }
 
 /**
- * Render the scene in the technical set.
- * TODO: This function is probably useless, we should remove it.
- */
-/** 
-export function renderScene(): (
-  technicalSet: E.Either<string, TechnicalSet>,
-) => E.Either<string, TechnicalSet> {
-  return F.flow(
-    E.map((set) => {
-      console.log('rendering');
-      set.renderer.render(set.scene, set.camera);
-      return set;
-    }),
-  );
-}
-*/
-
-/**
  * Start an animation loop to render the scene in the technical set.
  */
-export function startAnimationLoop(): (
+export function startAnimationLoop(
   technicalSet: E.Either<string, TechnicalSet>,
-) => E.Either<string, TechnicalSet> {
-  return F.flow(
+): E.Either<string, TechnicalSet> {
+  return F.pipe(
+    technicalSet,
     E.map((set) => {
       const animateLoop = () => {
         // TODO refactor this to use smaller functions
