@@ -11,6 +11,7 @@ import * as CONTROLS from './primitives/Controls';
  */
 import * as E from 'fp-ts/lib/Either';
 import * as F from 'fp-ts/lib/function';
+import * as O from 'fp-ts/lib/Option';
 
 /**
  * A Scenery is a collection of static assets used to build a 3D scene.
@@ -213,6 +214,22 @@ export function addAnimator(
   return F.flow(
     E.map((set) => {
       set.animators.push(animate);
+      return set;
+    }),
+  );
+}
+
+/**
+ * Add a mesh to the technical set.
+ */
+export function addMesh(
+  mesh: O.Option<THREE.Mesh>,
+): (
+  technicalSet: E.Either<string, TechnicalSet>,
+) => E.Either<string, TechnicalSet> {
+  return F.flow(
+    E.map((set) => {
+      O.map((mesh: THREE.Mesh) => set.scene.add(mesh))(mesh);
       return set;
     }),
   );

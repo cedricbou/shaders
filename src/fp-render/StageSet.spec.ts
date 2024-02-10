@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+
 import {
   TechnicalSet,
   addAnimator,
@@ -10,10 +11,12 @@ import {
   createDefaultTechnicalSet,
   startAnimationLoop,
   updateCameraPosition,
+  addMesh,
 } from './StageSet';
 
 import * as E from 'fp-ts/lib/Either';
 import * as F from 'fp-ts/lib/function';
+import * as O from 'fp-ts/lib/Option';
 
 vi.mock('three');
 vi.mock('three/addons');
@@ -110,6 +113,13 @@ describe('StageSet modifiers', () => {
     );
     expect(set.camera.position.copy).toHaveBeenCalledTimes(1);
     expect(set.camera.position.copy).toHaveBeenCalledWith(positionTarget);
+  });
+
+  test('should be able to add a task Mesh to the technical set', async () => {
+    const mesh = O.some(new three.Mesh());
+    const set = expectRightTechnicalSet(addMesh(mesh)(initialSet));
+    expect(set.scene.add).toHaveBeenCalledTimes(1);
+    expect(set.scene.add).toHaveBeenCalledWith(expect.any(three.Mesh));
   });
 });
 

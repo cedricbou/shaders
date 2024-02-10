@@ -13,7 +13,8 @@ import * as THREE from 'three';
 import * as E from 'fp-ts/lib/Either';
 import * as F from 'fp-ts/lib/function';
 
-import * as SS from '../fp-render/StageSet';
+import * as STAGE from '../fp-render/StageSet';
+import * as MESH from '../fp-render/Mesh';
 
 const props = defineProps<{
   forceError?: string;
@@ -31,13 +32,23 @@ onMounted(() => {
 
   // Initialise the stage
   const stage = F.pipe(
-    SS.createRenderer(shaderScreen.value),
-    SS.createDefaultTechnicalSet,
-    SS.updateCameraPosition(new THREE.Vector3(3, 5, 10)),
-    SS.addDefaultLight,
-    SS.addDefaultGrid,
-    SS.addOrbitControl,
-    SS.startAnimationLoop,
+    STAGE.createRenderer(shaderScreen.value),
+    STAGE.createDefaultTechnicalSet,
+    STAGE.updateCameraPosition(new THREE.Vector3(3, 5, 10)),
+    STAGE.addDefaultLight,
+    STAGE.addDefaultGrid,
+    STAGE.addOrbitControl,
+  );
+
+  const cube = F.pipe(2, MESH.createCube, MESH.scale(2));
+
+  F.pipe(
+    stage,
+    /*    STAGE.addAnimator((time) => {
+      cube.rotation.x += 0.1 * time;
+      cube.rotation.y += 0.1 * time;
+    }), */
+    STAGE.addMesh(cube),
   );
 
   // Test animations ?
@@ -46,22 +57,16 @@ onMounted(() => {
   // TODO : create helper functions for this and try quaternions rotation
   // TODO : then add shader material animated with uniforms
 
-  const cubeGeometry = new THREE.BoxGeometry(2, 2, 2);
-  const cubeMaterial = new THREE.MeshStandardMaterial({
-    color: 0x00ff00,
-    roughness: 0.5,
-    metalness: 0.5,
-  });
-  const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-  const rotatingCube: SS.Animator = function (time: number) {
+  /*  const rotatingCube: STAGE.Animator = function (time: number) {
     cube.rotation.x += 0.1 * time;
     cube.rotation.y += 0.1 * time;
   };
-
+*/
   // Test scene
   F.pipe(
     stage,
-    SS.addAnimator(rotatingCube),
+    //STAGE.addAnimator(rotatingCube),
+    STAGE.startAnimationLoop,
     E.fold(
       (error) => {
         errorMsg.value = error;
@@ -69,7 +74,7 @@ onMounted(() => {
       (stage) => {
         console.log('Stage initialised! {}', stage);
 
-        stage.scene.add(cube);
+        //  stage.scene.add(cube);
 
         // Add the sphere to the scene
         const sphereGeometry = new THREE.SphereGeometry(1.5);
@@ -95,7 +100,7 @@ onMounted(() => {
     <div
       v-show="errorMsg !== undefined"
       id="shader-screen-loading-error"
-      class="loading-error"
+      claSTAGE="loading-error"
     >
       {{ errorMsg }}
     </div>
