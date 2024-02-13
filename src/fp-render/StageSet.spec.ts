@@ -17,7 +17,6 @@ import {
 import * as E from 'fp-ts/lib/Either';
 import * as F from 'fp-ts/lib/function';
 import * as O from 'fp-ts/lib/Option';
-import { exp } from 'three/examples/jsm/nodes/Nodes.js';
 
 vi.mock('three');
 vi.mock('three/addons');
