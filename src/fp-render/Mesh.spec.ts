@@ -1,5 +1,4 @@
 import { describe, expect, test, vi } from 'vitest';
-// import { mock } from 'vitest-mock-extended';
 
 import * as MESH from './Mesh';
 
@@ -7,7 +6,6 @@ import * as F from 'fp-ts/lib/function';
 import * as O from 'fp-ts/lib/Option';
 
 import * as THREE from 'three';
-import { exp } from 'three/examples/jsm/nodes/Nodes.js';
 
 describe('Geometries and materials creation and modifiers', () => {
   beforeEach(async () => {});

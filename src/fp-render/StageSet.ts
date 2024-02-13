@@ -241,7 +241,7 @@ export function addActor(
 ) => E.Either<string, TechnicalSet> {
   return F.flow(
     E.map((set) => {
-      O.map((_: Actor) => {
+      O.map((_: MESH.Actor) => {
         set.actors.push(_);
         set.scene.add(_.mesh);
       })(actor);
