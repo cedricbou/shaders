@@ -17,6 +17,7 @@ import {
 import * as E from 'fp-ts/lib/Either';
 import * as F from 'fp-ts/lib/function';
 import * as O from 'fp-ts/lib/Option';
+import { exp } from 'three/examples/jsm/nodes/Nodes.js';
 
 vi.mock('three');
 vi.mock('three/addons');
@@ -77,9 +78,23 @@ describe('StageSet modifiers', () => {
   });
 
   test('should be able to add a default light to the technical set', async () => {
+    const position = new three.Vector3(0, 0, 0);
+    const dirLight = new three.DirectionalLight();
+
+    Object.defineProperty(dirLight, 'position', { get: () => position });
+
+    const dirLightSpied = vi
+      .spyOn(three, 'DirectionalLight')
+      .mockReturnValue(dirLight);
+
     const set = expectRightTechnicalSet(addDefaultLight(initialSet));
+
+    expect(dirLightSpied).toHaveBeenCalledTimes(1);
+    expect(dirLightSpied).toHaveBeenCalledWith(0xeee2d9, 0.7);
+    expect(position.set).toHaveBeenCalledTimes(1);
+    expect(position.set).toHaveBeenCalledWith(50, 50, 50);
     expect(three.AmbientLight).toHaveBeenCalledTimes(1);
-    expect(set.scene.add).toHaveBeenCalledTimes(1);
+    expect(set.scene.add).toHaveBeenCalledTimes(2);
     expect(set.scene.add).toHaveBeenCalledWith(expect.any(three.AmbientLight));
   });
 

@@ -165,8 +165,11 @@ export function addDefaultLight(
   return F.pipe(
     technicalSet,
     E.map((set) => {
-      const light = new THREE.AmbientLight(0xffffff);
+      const light = new THREE.AmbientLight(0xd6baa3, 0.3);
       set.scene.add(light);
+      const dirLight = new THREE.DirectionalLight(0xeee2d9, 0.7);
+      dirLight.position.set(50, 50, 50);
+      set.scene.add(dirLight);
       return set;
     }),
   );
