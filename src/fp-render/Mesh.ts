@@ -3,6 +3,16 @@ import * as O from 'fp-ts/lib/Option';
 
 import * as THREE from 'three';
 
+export class Actor {
+  constructor(mesh: THREE.Mesh) {
+    this.mesh = mesh;
+    this.animators = [];
+  }
+
+  mesh: THREE.Mesh;
+  animators: Array<(time: number) => void>;
+}
+
 const PHONG_DEFAULT_PARAMS: THREE.MeshPhongMaterialParameters = {
   emissive: 0x0,
   specular: 0x111111,
@@ -56,11 +66,13 @@ const randomPredefinedMaterial = function (): THREE.Material {
  * @param size the initial size of the cube.
  * @returns a task that resolves to a cube mesh.
  */
-export const createCube = function (size = 1): O.Option<THREE.Mesh> {
+export const createCube = function (size = 1): O.Option<Actor> {
   return O.of(
-    new THREE.Mesh(
-      new THREE.BoxGeometry(size, size, size),
-      randomPredefinedMaterial(),
+    new Actor(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(size, size, size),
+        randomPredefinedMaterial(),
+      ),
     ),
   );
 };
@@ -72,11 +84,25 @@ export const createCube = function (size = 1): O.Option<THREE.Mesh> {
  */
 export const scale = function (
   size: number,
-): (meshT: O.Option<THREE.Mesh>) => O.Option<THREE.Mesh> {
+): (_: O.Option<Actor>) => O.Option<Actor> {
   return F.flow(
-    O.map((mesh: THREE.Mesh) => {
-      mesh.scale.set(size, size, size);
-      return mesh;
+    O.map((actor: Actor) => {
+      actor.mesh.scale.set(size, size, size);
+      return actor;
+    }),
+  );
+};
+
+/**
+ * Add an animator to animate this mesh.
+ */
+export const animate = function (
+  animator: (actor: Actor) => (time: number) => void,
+): (_: O.Option<Actor>) => O.Option<Actor> {
+  return F.flow(
+    O.map((actor: Actor) => {
+      actor.animators.push(animator(actor));
+      return actor;
     }),
   );
 };

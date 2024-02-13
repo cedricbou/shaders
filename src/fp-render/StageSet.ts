@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 
 import * as CONTROLS from './primitives/Controls';
+import * as MESH from './Mesh';
 
 /**
  * Import fp-ts, a functional programming library for TypeScript.
@@ -31,6 +32,7 @@ export type TechnicalSet = {
   renderer: THREE.WebGLRenderer;
   camera: THREE.Camera;
   scene: THREE.Scene;
+  actors: Array<MESH.Actor>;
   animators: Array<Animator>;
   clock: THREE.Clock;
 };
@@ -88,6 +90,12 @@ export function startAnimationLoop(
           animator(delta);
         });
 
+        set.actors.forEach((actor) => {
+          actor.animators.forEach((actorAnimator) => {
+            actorAnimator(delta);
+          });
+        });
+
         // Render the scene
         set.renderer.render(set.scene, set.camera);
 
@@ -133,6 +141,7 @@ export const createDefaultTechnicalSet: CreateTechnicalSet = (renderer) => {
         camera,
         scene,
         animators: [],
+        actors: [],
         clock: new THREE.Clock(),
       };
       return set;
@@ -225,14 +234,17 @@ export function addAnimator(
 /**
  * Add a mesh to the technical set.
  */
-export function addMesh(
-  mesh: O.Option<THREE.Mesh>,
+export function addActor(
+  actor: O.Option<MESH.Actor>,
 ): (
   technicalSet: E.Either<string, TechnicalSet>,
 ) => E.Either<string, TechnicalSet> {
   return F.flow(
     E.map((set) => {
-      O.map((mesh: THREE.Mesh) => set.scene.add(mesh))(mesh);
+      O.map((_: Actor) => {
+        set.actors.push(_);
+        set.scene.add(_.mesh);
+      })(actor);
       return set;
     }),
   );

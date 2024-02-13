@@ -40,16 +40,17 @@ onMounted(() => {
     STAGE.addOrbitControl,
   );
 
-  const cube = F.pipe(2, MESH.createCube, MESH.scale(2));
-
-  F.pipe(
-    stage,
-    /*    STAGE.addAnimator((time) => {
-      cube.rotation.x += 0.1 * time;
-      cube.rotation.y += 0.1 * time;
-    }), */
-    STAGE.addMesh(cube),
+  const cube = F.pipe(
+    2,
+    MESH.createCube,
+    MESH.scale(2),
+    MESH.animate((actor: MESH.Actor) => (time: number) => {
+      actor.mesh.rotation.x += 0.1 * time;
+      actor.mesh.rotation.y += 0.1 * time;
+    }),
   );
+
+  F.pipe(stage, STAGE.addActor(cube));
 
   // Test animations ?
   // Add the cube to the scene

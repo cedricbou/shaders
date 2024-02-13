@@ -11,8 +11,10 @@ import {
   createDefaultTechnicalSet,
   startAnimationLoop,
   updateCameraPosition,
-  addMesh,
+  addActor,
 } from './StageSet';
+
+import * as MESH from './Mesh';
 
 import * as E from 'fp-ts/lib/Either';
 import * as F from 'fp-ts/lib/function';
@@ -67,6 +69,7 @@ describe('StageSet modifiers', () => {
       camera: camera,
       renderer: new three.WebGLRenderer(),
       animators: [],
+      actors: [],
       clock: new three.Clock(),
     } as TechnicalSet);
   });
@@ -129,9 +132,12 @@ describe('StageSet modifiers', () => {
     expect(set.camera.position.copy).toHaveBeenCalledWith(positionTarget);
   });
 
-  test('should be able to add a task Mesh to the technical set', async () => {
-    const mesh = O.some(new three.Mesh());
-    const set = expectRightTechnicalSet(addMesh(mesh)(initialSet));
+  test('should be able to add an Actor to the technical set', async () => {
+    const actor = new MESH.Actor(new three.Mesh());
+    const someActor = O.some(actor);
+    const set = expectRightTechnicalSet(addActor(someActor)(initialSet));
+    expect(set.actors).toContain(actor);
+    expect(set.actors.length).toBe(1);
     expect(set.scene.add).toHaveBeenCalledTimes(1);
     expect(set.scene.add).toHaveBeenCalledWith(expect.any(three.Mesh));
   });
@@ -235,6 +241,9 @@ describe('Check animators behavior in the animation loop', () => {
 
   test('add an animator to the technical stage and check it is called in the animation loop', async () => {
     const animator = vi.fn();
+    const actorAnimator = vi.fn();
+    const animatedActor = new MESH.Actor(new three.Mesh());
+    animatedActor.animators.push(actorAnimator);
 
     expectRightTechnicalSet(
       F.pipe(
@@ -244,14 +253,22 @@ describe('Check animators behavior in the animation loop', () => {
           return E.right(set);
         }),
         addAnimator(animator),
+        addActor(O.some(animatedActor)),
         startAnimationLoop,
       ),
     );
 
     expect(animator).toHaveBeenCalledTimes(10);
+    expect(actorAnimator).toHaveBeenCalledTimes(10);
+
     expect(animator).toHaveBeenNthCalledWith(1, 0.1);
+    expect(actorAnimator).toHaveBeenNthCalledWith(1, 0.1);
+
     expect(animator).toHaveBeenNthCalledWith(5, 0.1);
+    expect(actorAnimator).toHaveBeenNthCalledWith(5, 0.1);
+
     expect(animator).toHaveBeenLastCalledWith(0.1);
+    expect(actorAnimator).toHaveBeenLastCalledWith(0.1);
   });
 
   test('creating a renderer with empty canvas.getClientRects() should fail and return an error either', async () => {
