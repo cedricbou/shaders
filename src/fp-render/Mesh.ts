@@ -11,6 +11,7 @@ export class Actor {
 
   mesh: THREE.Mesh;
   animators: Array<(time: number) => void>;
+  shader?: (uniforms: Record<string, THREE.IUniform>) => void;
 }
 
 const PHONG_DEFAULT_PARAMS: THREE.MeshPhongMaterialParameters = {
@@ -88,6 +89,31 @@ export const scale = function (
   return F.flow(
     O.map((actor: Actor) => {
       actor.mesh.scale.set(size, size, size);
+      return actor;
+    }),
+  );
+};
+
+/**
+ * Shade a mesh with a shader material.
+ * Support only GLSL3 shaders.
+ */
+export const shade = function (
+  vertxShader: string,
+  fragShader: string,
+): (_: O.Option<Actor>) => O.Option<Actor> {
+  return F.flow(
+    O.map((actor: Actor) => {
+      actor.shader = (uniforms: Record<string, THREE.IUniform>) => {
+        const shaderMaterial = new THREE.RawShaderMaterial({
+          uniforms: uniforms,
+          vertexShader: vertxShader,
+          fragmentShader: fragShader,
+          glslVersion: THREE.GLSL3,
+        });
+        console.log(shaderMaterial);
+        actor.mesh.material = shaderMaterial;
+      };
       return actor;
     }),
   );

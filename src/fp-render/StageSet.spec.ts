@@ -70,6 +70,7 @@ describe('StageSet modifiers', () => {
       renderer: new three.WebGLRenderer(),
       animators: [],
       actors: [],
+      uniforms: { iTime: { value: 0 } },
       clock: new three.Clock(),
     } as TechnicalSet);
   });
@@ -236,7 +237,7 @@ describe('Check animators behavior in the animation loop', () => {
 
     expect(set.animators).toBeDefined();
     expect(set.animators).toBeInstanceOf(Array);
-    expect(set.animators.length).toBe(0);
+    expect(set.animators.length).toBe(1);
   });
 
   test('add an animator to the technical stage and check it is called in the animation loop', async () => {

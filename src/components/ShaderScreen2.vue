@@ -16,6 +16,12 @@ import * as F from 'fp-ts/lib/function';
 import * as STAGE from '../fp-render/StageSet';
 import * as MESH from '../fp-render/Mesh';
 
+/**
+ * Import our shader code from assets, as string.
+ */
+import fragmentShader from '../assets/shaders/starrycube.frag.glsl?raw';
+import vertexShader from '../assets/shaders/starrycube.vert.glsl?raw';
+
 const props = defineProps<{
   forceError?: string;
 }>();
@@ -44,6 +50,7 @@ onMounted(() => {
     2,
     MESH.createCube,
     MESH.scale(2),
+    MESH.shade(vertexShader, fragmentShader),
     MESH.animate((actor: MESH.Actor) => (time: number) => {
       actor.mesh.rotation.x += 0.1 * time;
       actor.mesh.rotation.y += 0.1 * time;

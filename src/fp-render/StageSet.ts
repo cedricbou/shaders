@@ -34,6 +34,7 @@ export type TechnicalSet = {
   scene: THREE.Scene;
   actors: Array<MESH.Actor>;
   animators: Array<Animator>;
+  uniforms: Record<string, THREE.IUniform>;
   clock: THREE.Clock;
 };
 
@@ -120,6 +121,11 @@ export type CreateTechnicalSet = (
   renderer: E.Either<string, THREE.WebGLRenderer>,
 ) => E.Either<string, TechnicalSet>;
 
+const defaultUniformAnimator =
+  (uniforms: Record<string, THREE.IUniform>) => (time: number) => {
+    uniforms.iTime.value = time;
+  };
+
 /**
  * Create a default TechnicalSet with a perspective camera and default scene.
  */
@@ -135,13 +141,18 @@ export const createDefaultTechnicalSet: CreateTechnicalSet = (renderer) => {
       );
       const scene = new THREE.Scene();
 
+      const uniforms = { iTime: { value: 0 } };
+
       // TODO: it is possible to return a TechnicalSet without a clock, and starting the clock crash. See how to solve this.
       const set: TechnicalSet = {
         renderer,
         camera,
         scene,
-        animators: [],
+        animators: [defaultUniformAnimator(uniforms)],
         actors: [],
+        uniforms: {
+          iTime: { value: 0 },
+        },
         clock: new THREE.Clock(),
       };
       return set;
@@ -244,6 +255,9 @@ export function addActor(
       O.map((_: MESH.Actor) => {
         set.actors.push(_);
         set.scene.add(_.mesh);
+        if (_.shader) {
+          _.shader(set.uniforms);
+        }
       })(actor);
       return set;
     }),
