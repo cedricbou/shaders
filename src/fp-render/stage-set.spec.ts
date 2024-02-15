@@ -1,0 +1,248 @@
+import { describe, expect, test, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
+import * as STAGE from './stage-set';
+
+import * as E from 'fp-ts/Either';
+
+vi.mock('three');
+
+/**
+ * Returns the real import of the module.
+ */
+const importActualThree = async function () {
+  return await vi.importActual<typeof import('three')>('three');
+};
+
+describe('The technical set', () => {
+  let three: typeof import('three');
+  let threeActual: typeof import('three');
+
+  let set: STAGE.TechnicalSet;
+
+  beforeEach(async () => {
+    three = await import('three');
+    threeActual = await importActualThree();
+
+    // Initialize the technical set to be tested
+    // Create a mock renderer with a size of 100x100
+    const renderer = mock<THREE.WebGLRenderer>();
+    renderer.getSize.mockImplementation((target: THREE.Vector2) => {
+      target.set(1280, 1024);
+      return target;
+    });
+
+    // Create a mock perspective camera to spy on default camera creation.
+    vi.mocked(three.PerspectiveCamera).mockImplementation(() => {
+      const mockCamera = mock<THREE.PerspectiveCamera>();
+      Object.defineProperty(mockCamera, 'position', {
+        value: new threeActual.Vector3(),
+      });
+      return mockCamera;
+    });
+
+    // Use the actual Vector3 to mock a new instance of Vector3
+    vi.mocked(three.Vector3).mockImplementation((x, y, z) => {
+      return new threeActual.Vector3(x, y, z);
+    });
+
+    // Use the actual Vector2 to mock a new instance of Vector2
+    vi.mocked(three.Vector2).mockImplementation((x, y) => {
+      return new threeActual.Vector2(x, y);
+    });
+
+    set = new STAGE.TechnicalSet(renderer, 100);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.resetAllMocks();
+  });
+
+  test('should have a perspective default camera properly positionned with scale', async () => {
+    expect(three.PerspectiveCamera).toHaveBeenCalledWith(
+      50,
+      1.25,
+      0.1,
+      100 * 100,
+    );
+
+    expect(set.camera.position).toEqual(
+      new three.Vector3(2, 3, 5).multiplyScalar(100),
+    );
+  });
+
+  test('should have a default empty scene', async () => {
+    expect(three.Scene).toHaveBeenCalledOnce();
+    expect(three.Scene).toHaveBeenCalledWith();
+    expect(set.scene).toBeDefined();
+    expect(set.scene).toBeInstanceOf(three.Scene);
+  });
+
+  test('should have a default clock', async () => {
+    expect(three.Clock).toHaveBeenCalledOnce();
+    expect(three.Clock).toHaveBeenCalledWith();
+    expect(set.clock).toBeDefined();
+    expect(set.clock).toBeInstanceOf(three.Clock);
+  });
+
+  test('should have a default scale of 100', async () => {
+    expect(set.scale).toBe(100);
+  });
+
+  test('should have a default uniforms with iTime set to 0', async () => {
+    expect(set.uniforms).toBeDefined();
+    expect(set.uniforms).toHaveProperty('iTime');
+    expect(set.uniforms.iTime.value).toBe(0);
+  });
+
+  test('should be able to change the camera and set back to the default camera', async () => {
+    const camera = new three.PerspectiveCamera();
+    set.withCamera(camera);
+    expect(set.camera).toBe(camera);
+
+    vi.mocked(three.PerspectiveCamera).mockClear();
+
+    const mockedCamera = new three.PerspectiveCamera();
+    const mockedCameraConstuctor = vi
+      .mocked(three.PerspectiveCamera)
+      .mockReturnValue(mockedCamera);
+
+    set.withDefaultCamera();
+
+    expect(mockedCameraConstuctor).toHaveBeenCalledWith(
+      50,
+      1.25,
+      0.1,
+      100 * 100,
+    );
+    expect(set.camera).toBe(mockedCamera);
+
+    expect(set.camera.position).toEqual(
+      new three.Vector3(2, 3, 5).multiplyScalar(100),
+    );
+  });
+
+  test('should update uniforms on animate', async () => {
+    expect(set.uniforms.iTime.value).toBe(0);
+    set.animate(0.2);
+    expect(set.uniforms.iTime.value).toBe(0.2);
+    set.animate(0.5);
+    expect(set.uniforms.iTime.value).toBe(0.5);
+  });
+
+  test('should animate a frame and call render on animateAndRender', async () => {
+    set.animate = vi.fn();
+
+    Object.defineProperty(set, 'clock', {
+      value: { getDelta: vi.fn(() => 0.99) },
+    });
+
+    set.animateAndRender();
+
+    expect(set.animate).toHaveBeenCalledOnce();
+    expect(set.animate).toHaveBeenCalledWith(0.99);
+    expect(set.renderer.render).toHaveBeenCalledOnce();
+    expect(set.renderer.render).toHaveBeenCalledWith(set.scene, set.camera);
+  });
+});
+
+describe('create a renderer fp-ts style', () => {
+  let three: typeof import('three');
+
+  beforeEach(async () => {
+    three = await import('three');
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.resetAllMocks();
+  });
+
+  test('creating a renderer with empty canvas.getClientRects() should fail and return an error either', async () => {
+    const canvas = mock<HTMLCanvasElement>();
+    const rectList = mock<DOMRectList>();
+    rectList.item.mockReturnValue(null);
+    Object.defineProperty(rectList, 'length', {
+      get: () => {
+        return 0;
+      },
+    });
+    canvas.getClientRects.mockReturnValue(rectList);
+    canvas.getContext.mockReturnValue(mock<WebGL2RenderingContext>());
+
+    const renderer = mock<THREE.WebGLRenderer>();
+    renderer.domElement = canvas;
+    vi.mocked(three.WebGLRenderer).mockReturnValue(renderer);
+
+    const set = STAGE.createRenderer(canvas);
+
+    expect(E.isLeft(set)).toBe(true);
+    E.fold(
+      (error) => expect(error).toBe('no client rect found'),
+      (value) => expect(value).toBeUndefined(),
+    )(set);
+  });
+
+  test('creating renderer with a failing canvas.getContext() should fail and return an error either', async () => {
+    const canvas = mock<HTMLCanvasElement>();
+    canvas.getClientRects.mockReturnValue(mock<DOMRectList>());
+    canvas.getContext.mockReturnValue(null);
+
+    const renderer = mock<THREE.WebGLRenderer>();
+    renderer.domElement = canvas;
+    vi.mocked(three.WebGLRenderer).mockReturnValue(renderer);
+
+    const set = STAGE.createRenderer(canvas);
+    expect(E.isLeft(set)).toBe(true);
+    E.fold(
+      (error) => expect(error).toBe('Failed to get webgl2 context from canvas'),
+      (value) => expect(value).toBeUndefined(),
+    )(set);
+  });
+
+  test('creating renderer with proper canvas and webglcontext should return a valid WebGLRenderer', async () => {
+    vi.stubGlobal('window', {
+      devicePixelRatio: 1,
+    });
+
+    // Code needs a canvas to create a renderer.
+    const width = 200;
+    const height = 100;
+
+    const context = mock<WebGL2RenderingContext>();
+
+    const rect = mock<DOMRect>();
+    rect.width = width;
+    rect.height = height;
+
+    const rectList = mock<DOMRectList>();
+    rectList.item.mockReturnValue(rect);
+
+    const canvas = mock<HTMLCanvasElement>();
+    canvas.getContext.mockReturnValue(context);
+    canvas.getClientRects.mockReturnValue(rectList);
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+
+    // Mock webgl renderer with a canvas of size 100x100.
+    const renderer = mock<THREE.WebGLRenderer>();
+    renderer.domElement = canvas;
+    vi.mocked(three.WebGLRenderer).mockReturnValue(renderer);
+
+    const set = STAGE.createRenderer(canvas);
+    expect(E.isRight(set)).toBe(true);
+    E.fold(
+      (error) => expect(error).toBeUndefined(),
+      (value: THREE.WebGLRenderer) => {
+        expect(value).toBe(renderer);
+        expect(value.domElement).toBe(canvas);
+        expect(three.WebGLRenderer).toHaveBeenCalledTimes(1);
+        expect(three.WebGLRenderer).toHaveBeenCalledWith({
+          canvas: value.domElement,
+          context: value.domElement.getContext('webgl2'),
+        });
+      },
+    )(set);
+  });
+});

@@ -21,3 +21,30 @@ export const createStageGrid = function (size: number): THREE.GridHelper {
   );
   return grid;
 };
+
+/**
+ * An animator function update a state according to time and user input.
+ */
+export type Animator = (delta: number) => void;
+
+/**
+ * Returns default uniforms, with preinitialized uniform variable in ShaderToy standard.
+ */
+export function initShaderToyzUniforms(): Record<string, THREE.IUniform> {
+  return {
+    iTime: { value: 0 },
+    iResolution: { value: new THREE.Vector3() },
+    iMouse: { value: new THREE.Vector4() },
+  };
+}
+
+/**
+ * An animator function to update shader toys type uniforms according to time.
+ */
+export function shaderToyzAnimator(
+  uniforms: Record<string, THREE.IUniform>,
+): Animator {
+  return function (delta: number) {
+    uniforms.iTime.value = delta;
+  };
+}
