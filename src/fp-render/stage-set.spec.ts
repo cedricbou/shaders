@@ -4,6 +4,8 @@ import { mock } from 'vitest-mock-extended';
 import * as STAGE from './stage-set';
 
 import * as E from 'fp-ts/Either';
+import * as O from 'fp-ts/Option';
+import * as F from 'fp-ts/function';
 
 vi.mock('three');
 
@@ -61,7 +63,7 @@ describe('The technical set', () => {
 
   test('should have a perspective default camera properly positionned with scale', async () => {
     expect(three.PerspectiveCamera).toHaveBeenCalledWith(
-      50,
+      75,
       1.25,
       0.1,
       100 * 100,
@@ -70,6 +72,7 @@ describe('The technical set', () => {
     expect(set.camera.position).toEqual(
       new three.Vector3(2, 3, 5).multiplyScalar(100),
     );
+    expect(set.camera.lookAt).toHaveBeenCalledWith(0, 0, 0);
   });
 
   test('should have a default empty scene', async () => {
@@ -111,7 +114,7 @@ describe('The technical set', () => {
     set.withDefaultCamera();
 
     expect(mockedCameraConstuctor).toHaveBeenCalledWith(
-      50,
+      75,
       1.25,
       0.1,
       100 * 100,
@@ -121,6 +124,8 @@ describe('The technical set', () => {
     expect(set.camera.position).toEqual(
       new three.Vector3(2, 3, 5).multiplyScalar(100),
     );
+
+    expect(set.camera.lookAt).toHaveBeenCalledWith(0, 0, 0);
   });
 
   test('should update uniforms on animate', async () => {
@@ -144,6 +149,62 @@ describe('The technical set', () => {
     expect(set.animate).toHaveBeenCalledWith(0.99);
     expect(set.renderer.render).toHaveBeenCalledOnce();
     expect(set.renderer.render).toHaveBeenCalledWith(set.scene, set.camera);
+  });
+
+  test('should setup default lighting to the scene withDefaultLighting', async () => {
+    const mockedAmbientLight = new three.AmbientLight();
+    const mockedDirectionalLight = new three.DirectionalLight();
+
+    const directionLightPosition = new threeActual.Vector3();
+
+    Object.defineProperty(mockedDirectionalLight, 'position', {
+      value: directionLightPosition,
+    });
+
+    const mockedAmbientLightConstructor = vi
+      .mocked(three.AmbientLight)
+      .mockReturnValue(mockedAmbientLight);
+
+    const mockedDirectionalLightConstructor = vi
+      .mocked(three.DirectionalLight)
+      .mockReturnValue(mockedDirectionalLight);
+
+    const chainedSet = set.withDefaultLighting();
+
+    expect(O.isSome(set.lighting)).toBe(true);
+
+    F.pipe(
+      set.lighting,
+      O.map((lighting) => {
+        expect(lighting.ambient).toBeDefined();
+        expect(lighting.ambient).toBeInstanceOf(three.AmbientLight);
+        expect(lighting.ambient).toBe(mockedAmbientLight);
+
+        expect(lighting.directional).toBeDefined();
+        expect(lighting.directional).toBeInstanceOf(three.DirectionalLight);
+        expect(lighting.directional).toBe(mockedDirectionalLight);
+
+        return lighting;
+      }),
+    );
+
+    expect(set.scene.add).toHaveBeenCalledTimes(2);
+    expect(set.scene.add).toHaveBeenCalledWith(mockedAmbientLight);
+    expect(set.scene.add).toHaveBeenCalledWith(mockedDirectionalLight);
+
+    expect(directionLightPosition).toEqual(new threeActual.Vector3(-1, 3, 2));
+
+    expect(mockedAmbientLightConstructor).toHaveBeenCalledWith(
+      three.Color.NAMES.lightyellow,
+      0.5,
+    );
+
+    expect(mockedDirectionalLightConstructor).toHaveBeenCalledWith(
+      three.Color.NAMES.floralwhite,
+      0.5,
+    );
+
+    expect(chainedSet).toBe(set);
   });
 });
 

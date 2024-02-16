@@ -5,8 +5,14 @@ import * as CONTROLS from './primitives/Controls';
 
 import * as E from 'fp-ts/lib/Either';
 import * as F from 'fp-ts/lib/function';
+import * as O from 'fp-ts/lib/Option';
 
 type StageSetError = string;
+
+type DefaultLighting = {
+  ambient: THREE.AmbientLight;
+  directional: THREE.DirectionalLight;
+};
 
 /**
  * A TechnicalSet is a collection of technical assets used to render a 3D scene.
@@ -64,6 +70,20 @@ export class TechnicalSet {
    */
   public camera: THREE.Camera;
 
+  private _lighting: O.Option<DefaultLighting> = O.none;
+
+  /**
+   * The default lighting used to render the scene.
+   *
+   */
+  public get lighting() {
+    return this._lighting;
+  }
+
+  private set lighting(lighting: O.Option<DefaultLighting>) {
+    this._lighting = lighting;
+  }
+
   /**
    * The list of actors in the scene.
    */
@@ -115,12 +135,13 @@ export class TechnicalSet {
    * @returns The default camera used to render the scene.
    */
   private createDefaultCamera(): THREE.PerspectiveCamera {
-    return new THREE.PerspectiveCamera(
-      50,
+    const camera = new THREE.PerspectiveCamera(
+      75,
       this.screenSize.width / this.screenSize.height,
       0.1,
       100 * this.scale,
     );
+    return camera;
   }
 
   /**
@@ -131,6 +152,7 @@ export class TechnicalSet {
   private positionDefaultCamera(): void {
     const position = new THREE.Vector3(2, 3, 5).multiplyScalar(this.scale);
     this.camera.position.copy(position);
+    this.camera.lookAt(0, 0, 0);
   }
 
   /**
@@ -178,6 +200,27 @@ export class TechnicalSet {
     // TODO: An event bases system to manage change on actor and update the scene accordingly?
     this.scene.add(actor.mesh);
     this.actors.push(actor);
+    return this;
+  }
+
+  /**
+   * Add a default lighting to the scene.
+   * @returns this object to chain calls.
+   */
+  public withDefaultLighting(): TechnicalSet {
+    const ambient = new THREE.AmbientLight(THREE.Color.NAMES.lightyellow, 0.5);
+
+    const directional = new THREE.DirectionalLight(
+      THREE.Color.NAMES.floralwhite,
+      0.5,
+    );
+    directional.position.set(-1, 3, 2);
+
+    this.scene.add(ambient);
+    this.scene.add(directional);
+
+    this.lighting = O.some({ ambient, directional });
+
     return this;
   }
 }

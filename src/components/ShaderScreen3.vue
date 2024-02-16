@@ -15,6 +15,7 @@ import * as F from 'fp-ts/lib/function';
 
 import * as STAGE from '../fp-render/stage-set';
 import * as MESH from '../fp-render/Mesh';
+import * as CONTROLS from '../fp-render/primitives/Controls';
 
 /**
  * Import our shader code from assets, as string.
@@ -43,17 +44,23 @@ onMounted(() => {
       errorMsg.value = error;
     }),
     E.map((renderer) => {
-      const set = new STAGE.TechnicalSet(renderer);
+      const set = new STAGE.TechnicalSet(renderer).withDefaultLighting();
 
-      const cube = new MESH.Actor(new THREE.Mesh(
-        new THREE.BoxGeometry(1, 1, 1),
-        new THREE.MeshStandardMaterial({
-          color: 0x00ff00,
-        }),
-      ));
+      set.scene.add(CONTROLS.createStageGrid(10));
+      CONTROLS.createOrbitControl(set.camera, renderer.domElement);
 
-      set.withActor(cube)
-        .startAnimationLoop();
+      const cube = new MESH.Actor(
+        new THREE.Mesh(
+          new THREE.BoxGeometry(1, 1, 1),
+          new THREE.MeshStandardMaterial({
+            color: 0x00ff00,
+          }),
+        ),
+      );
+
+      cube.mesh.position.z = 0;
+
+      set.withActor(cube).startAnimationLoop();
 
       return renderer;
     }),
