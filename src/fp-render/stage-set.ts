@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 
+import * as MESH from './Mesh';
 import * as CONTROLS from './primitives/Controls';
 
 import * as E from 'fp-ts/lib/Either';
@@ -62,6 +63,11 @@ export class TechnicalSet {
    * You can also use the withDefaultCamera method to reset the camera to its default value.
    */
   public camera: THREE.Camera;
+
+  /**
+   * The list of actors in the scene.
+   */
+  public readonly actors: Array<MESH.Actor> = [];
 
   /** A specific animator to update the uniforms.iTime value in the animation loop */
   private readonly shaderToyzUniformAnimator: CONTROLS.Animator;
@@ -143,10 +149,37 @@ export class TechnicalSet {
     this.renderer.render(this.scene, this.camera);
   }
 
-  /*
-  actors: Array<MESH.Actor>;
-  animators: Array<Animator>;
-*/
+  /**
+   * Set up and start the animation loop
+   */
+  public startAnimationLoop(): void {
+    const animateLoop = () => {
+      this.animateAndRender();
+      requestAnimationFrame(animateLoop);
+    };
+
+    this.clock.start();
+    requestAnimationFrame(animateLoop);
+  }
+
+  /**
+   * Add actor mesh to the scene and register its animators for the frame animation.
+   * Note : changing the animators after adding it to the scene will update them, but
+   * changing the mesh will not update the scene. You'll need to update the Material or
+   * Geometry of the mesh to update the scene.
+   *
+   * This will evolute in the future to allow a more dynamic scene update. In the meantime,
+   * the best practice is to avoid update the mesh or the animators list after adding it to the scene.
+   *
+   * @param actor The actor to add to the scene.
+   * @returns this object to chain calls.
+   */
+  public withActor(actor: MESH.Actor): TechnicalSet {
+    // TODO: An event bases system to manage change on actor and update the scene accordingly?
+    this.scene.add(actor.mesh);
+    this.actors.push(actor);
+    return this;
+  }
 }
 
 /** Allow creation of a webgl renderer from a canvas */
