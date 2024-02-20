@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import { anyObject, mock, mockClear, mockReset } from 'vitest-mock-extended';
+import { mock, mockClear, mockReset } from 'vitest-mock-extended';
 
 import * as STAGE from './stage-set';
 import * as MESH from './actors';
