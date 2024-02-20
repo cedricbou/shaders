@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import * as CONTROLS from './Controls';
+import * as CONTROLS from './primitives';
 import { OrbitControls } from 'three/addons';
 
 vi.mock('three');

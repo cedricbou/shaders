@@ -3,18 +3,45 @@ import * as O from 'fp-ts/lib/Option';
 
 import * as THREE from 'three';
 
+const randomPredefinedMaterial = function (): THREE.Material {
+  return PREDIFINED_MATERIALS[
+    Math.floor(Math.random() * PREDIFINED_MATERIALS.length)
+  ];
+};
+
 export class Actor {
+  public readonly mesh: THREE.Mesh;
+
+  public readonly animators: Array<(time: number) => void>;
+
   constructor(mesh: THREE.Mesh) {
     this.mesh = mesh;
     this.animators = [];
   }
 
-  mesh: THREE.Mesh;
-  animators: Array<(time: number) => void>;
-  shader?: (uniforms: Record<string, THREE.IUniform>) => void;
+  public withRandomMaterial(): Actor {
+    this.mesh.material = randomPredefinedMaterial();
+    return this;
+  }
+
+  public withShader(
+    vertexShader: string,
+    fragmentShader: string,
+    uniforms: Record<string, THREE.IUniform>,
+  ): Actor {
+    const shaderMaterial = new THREE.RawShaderMaterial({
+      uniforms: uniforms,
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      glslVersion: THREE.GLSL3,
+    });
+
+    this.mesh.material = shaderMaterial;
+    return this;
+  }
 }
 
-const PHONG_DEFAULT_PARAMS: THREE.MeshPhongMaterialParameters = {
+export const PHONG_DEFAULT_PARAMS: THREE.MeshPhongMaterialParameters = {
   emissive: 0x0,
   specular: 0x111111,
   shininess: 30,
@@ -22,32 +49,37 @@ const PHONG_DEFAULT_PARAMS: THREE.MeshPhongMaterialParameters = {
   fog: true,
 };
 
-const PHONG_RED_MATERIAL = new THREE.MeshPhongMaterial({
+export const PHONG_RED_MATERIAL = new THREE.MeshPhongMaterial({
   ...PHONG_DEFAULT_PARAMS,
   color: 0xff0000,
 });
-const PHONG_YELLOW_MATERIAL = new THREE.MeshPhongMaterial({
+
+export const PHONG_YELLOW_MATERIAL = new THREE.MeshPhongMaterial({
   ...PHONG_DEFAULT_PARAMS,
   color: 0xffff00,
 });
-const PHONG_GREEN_MATERIAL = new THREE.MeshPhongMaterial({
+
+export const PHONG_GREEN_MATERIAL = new THREE.MeshPhongMaterial({
   ...PHONG_DEFAULT_PARAMS,
   color: 0x00ff00,
 });
-const PHONG_BLUE_MATERIAL = new THREE.MeshPhongMaterial({
+
+export const PHONG_BLUE_MATERIAL = new THREE.MeshPhongMaterial({
   ...PHONG_DEFAULT_PARAMS,
   color: 0x0000ff,
 });
-const PHONG_PURPLE_MATERIAL = new THREE.MeshPhongMaterial({
+
+export const PHONG_PURPLE_MATERIAL = new THREE.MeshPhongMaterial({
   ...PHONG_DEFAULT_PARAMS,
   color: 0xff00ff,
 });
-const PHONG_ORANGE_MATERIAL = new THREE.MeshPhongMaterial({
+
+export const PHONG_ORANGE_MATERIAL = new THREE.MeshPhongMaterial({
   ...PHONG_DEFAULT_PARAMS,
   color: 0xffa500,
 });
 
-const PREDIFINED_MATERIALS = [
+export const PREDIFINED_MATERIALS = [
   PHONG_RED_MATERIAL,
   PHONG_YELLOW_MATERIAL,
   PHONG_GREEN_MATERIAL,
@@ -55,12 +87,6 @@ const PREDIFINED_MATERIALS = [
   PHONG_PURPLE_MATERIAL,
   PHONG_ORANGE_MATERIAL,
 ];
-
-const randomPredefinedMaterial = function (): THREE.Material {
-  return PREDIFINED_MATERIALS[
-    Math.floor(Math.random() * PREDIFINED_MATERIALS.length)
-  ];
-};
 
 /**
  * Create a default Cube mesh with a random predefined material.
@@ -89,31 +115,6 @@ export const scale = function (
   return F.flow(
     O.map((actor: Actor) => {
       actor.mesh.scale.set(size, size, size);
-      return actor;
-    }),
-  );
-};
-
-/**
- * Shade a mesh with a shader material.
- * Support only GLSL3 shaders.
- */
-export const shade = function (
-  vertxShader: string,
-  fragShader: string,
-): (_: O.Option<Actor>) => O.Option<Actor> {
-  return F.flow(
-    O.map((actor: Actor) => {
-      actor.shader = (uniforms: Record<string, THREE.IUniform>) => {
-        const shaderMaterial = new THREE.RawShaderMaterial({
-          uniforms: uniforms,
-          vertexShader: vertxShader,
-          fragmentShader: fragShader,
-          glslVersion: THREE.GLSL3,
-        });
-        console.log(shaderMaterial);
-        actor.mesh.material = shaderMaterial;
-      };
       return actor;
     }),
   );

@@ -13,8 +13,9 @@ import * as THREE from 'three';
 import * as E from 'fp-ts/lib/Either';
 import * as F from 'fp-ts/lib/function';
 
-import * as STAGE from '../fp-render/StageSet';
-import * as MESH from '../fp-render/Mesh';
+import * as STAGE from '../fp-render/stage-set';
+import * as MESH from '../fp-render/actors';
+import * as CONTROLS from '../fp-render/primitives';
 
 /**
  * Import our shader code from assets, as string.
@@ -36,69 +37,34 @@ onMounted(() => {
     return;
   }
 
-  // Initialise the stage
-  const stage = F.pipe(
-    STAGE.createRenderer(shaderScreen.value),
-    STAGE.createDefaultTechnicalSet,
-    STAGE.updateCameraPosition(new THREE.Vector3(3, 5, 10)),
-    STAGE.addDefaultLight,
-    STAGE.addDefaultGrid,
-    STAGE.addOrbitControl,
-  );
-
-  const cube = F.pipe(
-    2,
-    MESH.createCube,
-    MESH.scale(2),
-    MESH.shade(vertexShader, fragmentShader),
-    MESH.animate((actor: MESH.Actor) => (time: number) => {
-      actor.mesh.rotation.x += 0.1 * time;
-      actor.mesh.rotation.y += 0.1 * time;
-    }),
-  );
-
-  F.pipe(stage, STAGE.addActor(cube));
-
-  // Test animations ?
-  // Add the cube to the scene
-
-  // TODO : create helper functions for this and try quaternions rotation
-  // TODO : then add shader material animated with uniforms
-
-  /*  const rotatingCube: STAGE.Animator = function (time: number) {
-    cube.rotation.x += 0.1 * time;
-    cube.rotation.y += 0.1 * time;
-  };
-*/
-  // Test scene
   F.pipe(
-    stage,
-    //STAGE.addAnimator(rotatingCube),
-    STAGE.startAnimationLoop,
-    E.fold(
-      (error) => {
-        errorMsg.value = error;
-      },
-      (stage) => {
-        console.log('Stage initialised! {}', stage);
+    // Init the rendering pipleline and set.
+    STAGE.createRenderer(shaderScreen.value),
+    STAGE.createTechnicalSet(),
+    // Fill in the set and start loop.
+    E.map((set) => {
+      set.withDefaultLighting();
+      set.scene.add(CONTROLS.createStageGrid(10));
 
-        //  stage.scene.add(cube);
+      CONTROLS.createOrbitControl(set.camera, set.renderer.domElement);
 
-        // Add the sphere to the scene
-        const sphereGeometry = new THREE.SphereGeometry(1.5);
-        const sphereMaterial = new THREE.MeshStandardMaterial({
-          color: 0x0000ff,
-          roughness: 0.3,
-          metalness: 0.8,
-        });
-        stage.scene.add(
-          new THREE.Mesh(sphereGeometry, sphereMaterial).translateOnAxis(
-            new THREE.Vector3(1, 1, -1),
-            2,
-          ),
-        );
-      },
-    ),
+      const cube = new MESH.Actor(
+        new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1)),
+      );
+
+      cube.withShader(vertexShader, fragmentShader, set.uniforms);
+
+      cube.mesh.position.z = 0;
+
+      set.withActor(cube).startAnimationLoop();
+
+      return set;
+    }),
+    // Manage Error message
+    E.orElse((e: STAGE.StageSetError) => {
+      errorMsg.value = e;
+      return E.left(e);
+    }),
   );
 });
 </script>
@@ -156,3 +122,4 @@ onMounted(() => {
 }
 </style>
 ../fp-render/ThreeFunctionalSet../fp-render/StageSet
+../fp-render/primitives/primitives ../fp-render/actors
