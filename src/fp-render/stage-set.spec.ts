@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import { mock, mockClear, mockReset } from 'vitest-mock-extended';
+import { anyObject, mock, mockClear, mockReset } from 'vitest-mock-extended';
 
 import * as STAGE from './stage-set';
 import * as MESH from './actors';
@@ -219,17 +219,43 @@ describe('The technical set', () => {
     });
 
     const actor = new MESH.Actor(new three.Mesh());
-    const animator = vi.fn();
+    const animator1 = vi.fn();
+    const animator2 = vi.fn();
 
-    actor.animators.push(animator);
+    actor.animators.push(animator1);
+    actor.animators.push(animator2);
 
     set.withActor(actor).animateAndRender();
 
-    expect(animator).toHaveBeenCalledOnce();
-    expect(animator).toHaveBeenCalledWith(0.99);
+    expect(animator1).toHaveBeenCalledOnce();
+    expect(animator2).toHaveBeenCalledWith(0.99);
     expect(set.uniforms.iTime.value).toBe(0.99);
     expect(set.renderer.render).toHaveBeenCalledOnce();
     expect(set.renderer.render).toHaveBeenCalledWith(set.scene, set.camera);
+  });
+
+  test('should start the animation loop', async () => {
+    let requestAnimationFrameCounter = 0;
+    const requestAnimationFrame = vi.fn().mockImplementation((cb) => {
+      requestAnimationFrameCounter++;
+      if (requestAnimationFrameCounter <= 10) {
+        cb();
+      }
+    });
+
+    vi.stubGlobal('window', {
+      requestAnimationFrame: requestAnimationFrame,
+    });
+
+    const actor = new MESH.Actor(new three.Mesh());
+    const animator = vi.fn();
+    actor.animators.push(animator);
+
+    set.withActor(actor).startAnimationLoop();
+
+    expect(set.clock.start).toHaveBeenCalledOnce();
+    expect(animator).toHaveBeenCalledTimes(10);
+    expect(window.requestAnimationFrame).toHaveBeenCalledTimes(11);
   });
 });
 

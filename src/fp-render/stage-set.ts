@@ -180,11 +180,11 @@ export class TechnicalSet {
   public startAnimationLoop(): void {
     const animateLoop = () => {
       this.animateAndRender();
-      requestAnimationFrame(animateLoop);
+      window.requestAnimationFrame(animateLoop);
     };
 
     this.clock.start();
-    requestAnimationFrame(animateLoop);
+    window.requestAnimationFrame(animateLoop);
   }
 
   /**
