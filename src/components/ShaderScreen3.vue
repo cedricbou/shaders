@@ -74,7 +74,7 @@ onMounted(() => {
     <div
       v-show="errorMsg !== undefined"
       id="shader-screen-loading-error"
-      claSTAGE="loading-error"
+      class="loading-error"
     >
       {{ errorMsg }}
     </div>
@@ -121,5 +121,3 @@ onMounted(() => {
   }
 }
 </style>
-../fp-render/ThreeFunctionalSet../fp-render/StageSet
-../fp-render/primitives/primitives ../fp-render/actors
