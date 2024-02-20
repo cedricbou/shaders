@@ -7,7 +7,7 @@ import * as E from 'fp-ts/lib/Either';
 import * as F from 'fp-ts/lib/function';
 import * as O from 'fp-ts/lib/Option';
 
-type StageSetError = string;
+export type StageSetError = string;
 
 type DefaultLighting = {
   ambient: THREE.AmbientLight;
@@ -168,6 +168,9 @@ export class TechnicalSet {
    */
   public animateAndRender(): void {
     this.animate(this.clock.getDelta());
+    this.actors.forEach((actor) => {
+      actor.animators.forEach((animator) => animator(this.clock.getDelta()));
+    });
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -250,4 +253,13 @@ export function createRenderer(
       return renderer;
     }),
   );
+}
+
+/** Allow creation of a Technical Set in a fp-ts pipe, from a Renderer Either */
+export function createTechnicalSet(
+  scale: number = 1,
+): (
+  renderer: E.Either<StageSetError, THREE.WebGLRenderer>,
+) => E.Either<StageSetError, TechnicalSet> {
+  return F.flow(E.map((renderer) => new TechnicalSet(renderer, scale)));
 }

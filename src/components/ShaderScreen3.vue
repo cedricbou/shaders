@@ -37,17 +37,17 @@ onMounted(() => {
     return;
   }
 
-  // Initialise the stage
   F.pipe(
+    // Init the rendering pipleline and set.
     STAGE.createRenderer(shaderScreen.value),
-    E.mapLeft((error) => {
-      errorMsg.value = error;
-    }),
-    E.map((renderer) => {
-      const set = new STAGE.TechnicalSet(renderer).withDefaultLighting();
+    STAGE.createTechnicalSet(),
+    // Fill in the set and start loop.
+    E.map((set) => {
 
+      set.withDefaultLighting();
       set.scene.add(CONTROLS.createStageGrid(10));
-      CONTROLS.createOrbitControl(set.camera, renderer.domElement);
+
+      CONTROLS.createOrbitControl(set.camera, set.renderer.domElement);
 
       const cube = new MESH.Actor(
         new THREE.Mesh(
@@ -62,10 +62,17 @@ onMounted(() => {
 
       set.withActor(cube).startAnimationLoop();
 
-      return renderer;
+      return set;
+    }),
+    // Manage Error message
+    E.orElse((e: STAGE.StageSetError) => {
+      errorMsg.value = e;
+      return E.left(e);
     }),
   );
 });
+
+
 </script>
 
 <template>

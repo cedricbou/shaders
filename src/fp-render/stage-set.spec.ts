@@ -1,7 +1,8 @@
 import { describe, expect, test, vi } from 'vitest';
-import { mock } from 'vitest-mock-extended';
+import { mock, mockClear, mockReset } from 'vitest-mock-extended';
 
 import * as STAGE from './stage-set';
+import * as MESH from './Mesh';
 
 import * as E from 'fp-ts/Either';
 import * as O from 'fp-ts/Option';
@@ -9,50 +10,48 @@ import * as F from 'fp-ts/function';
 
 vi.mock('three');
 
-/**
- * Returns the real import of the module.
- */
-const importActualThree = async function () {
-  return await vi.importActual<typeof import('three')>('three');
-};
+let three: typeof import('three');
+let threeActual: typeof import('three');
+
+three = await import('three');
+threeActual = await vi.importActual<typeof import('three')>('three');
+
+function getAndPrepareRendererMockForTechnicalSet() {
+  // Initialize the technical set to be tested
+  // Create a mock renderer with a size of 100x100
+  const renderer = mock<THREE.WebGLRenderer>();
+  renderer.getSize.mockImplementation((target: THREE.Vector2) => {
+    target.set(1280, 1024);
+    return target;
+  });
+
+  // Create a mock perspective camera to spy on default camera creation.
+  vi.mocked(three.PerspectiveCamera).mockImplementation(() => {
+    const mockCamera = mock<THREE.PerspectiveCamera>();
+    Object.defineProperty(mockCamera, 'position', {
+      value: new threeActual.Vector3(),
+    });
+    return mockCamera;
+  });
+
+  // Use the actual Vector3 to mock a new instance of Vector3
+  vi.mocked(three.Vector3).mockImplementation((x, y, z) => {
+    return new threeActual.Vector3(x, y, z);
+  });
+
+  // Use the actual Vector2 to mock a new instance of Vector2
+  vi.mocked(three.Vector2).mockImplementation((x, y) => {
+    return new threeActual.Vector2(x, y);
+  });
+
+  return renderer;
+}
 
 describe('The technical set', () => {
-  let three: typeof import('three');
-  let threeActual: typeof import('three');
-
   let set: STAGE.TechnicalSet;
 
   beforeEach(async () => {
-    three = await import('three');
-    threeActual = await importActualThree();
-
-    // Initialize the technical set to be tested
-    // Create a mock renderer with a size of 100x100
-    const renderer = mock<THREE.WebGLRenderer>();
-    renderer.getSize.mockImplementation((target: THREE.Vector2) => {
-      target.set(1280, 1024);
-      return target;
-    });
-
-    // Create a mock perspective camera to spy on default camera creation.
-    vi.mocked(three.PerspectiveCamera).mockImplementation(() => {
-      const mockCamera = mock<THREE.PerspectiveCamera>();
-      Object.defineProperty(mockCamera, 'position', {
-        value: new threeActual.Vector3(),
-      });
-      return mockCamera;
-    });
-
-    // Use the actual Vector3 to mock a new instance of Vector3
-    vi.mocked(three.Vector3).mockImplementation((x, y, z) => {
-      return new threeActual.Vector3(x, y, z);
-    });
-
-    // Use the actual Vector2 to mock a new instance of Vector2
-    vi.mocked(three.Vector2).mockImplementation((x, y) => {
-      return new threeActual.Vector2(x, y);
-    });
-
+    const renderer = getAndPrepareRendererMockForTechnicalSet();
     set = new STAGE.TechnicalSet(renderer, 100);
   });
 
@@ -206,18 +205,78 @@ describe('The technical set', () => {
 
     expect(chainedSet).toBe(set);
   });
+
+  test('should add an actor to the set withActor', async () => {
+    const actor = new MESH.Actor(new three.Mesh());
+    const chainedSet = set.withActor(actor);
+
+    expect(set.scene.add).toHaveBeenCalledOnce();
+    expect(set.scene.add).toHaveBeenCalledWith(actor.mesh);
+    expect(set.actors).toContain(actor);
+    expect(chainedSet).toBe(set);
+  });
+
+  test('should animate and render all animators and actors from the set', async () => {
+    Object.defineProperty(set, 'clock', {
+      value: { getDelta: vi.fn(() => 0.99) },
+    });
+
+    const actor = new MESH.Actor(new three.Mesh());
+    const animator = vi.fn();
+
+    actor.animators.push(animator);
+
+    set.withActor(actor).animateAndRender();
+
+    expect(animator).toHaveBeenCalledOnce();
+    expect(animator).toHaveBeenCalledWith(0.99);
+    expect(set.uniforms.iTime.value).toBe(0.99);
+    expect(set.renderer.render).toHaveBeenCalledOnce();
+    expect(set.renderer.render).toHaveBeenCalledWith(set.scene, set.camera);
+  });
 });
 
 describe('create a renderer fp-ts style', () => {
-  let three: typeof import('three');
+  let mockedRenderer = mock<THREE.WebGLRenderer>();
+  let mockedCanvas = mock<HTMLCanvasElement>();
 
-  beforeEach(async () => {
-    three = await import('three');
-  });
+  function mockValidCanvasAndRenderer() {
+    vi.stubGlobal('window', {
+      devicePixelRatio: 1,
+    });
+
+    // Code needs a canvas to create a renderer.
+    const width = 200;
+    const height = 100;
+
+    const context = mock<WebGL2RenderingContext>();
+
+    const rect = mock<DOMRect>();
+
+    rect.width = width;
+    rect.height = height;
+
+    const rectList = mock<DOMRectList>();
+    rectList.item.mockReturnValue(rect);
+
+    mockedCanvas.getContext.mockReturnValue(context);
+    mockedCanvas.getClientRects.mockReturnValue(rectList);
+    mockedCanvas.width = rect.width;
+    mockedCanvas.height = rect.height;
+
+    // Mock webgl renderer with a canvas of size 100x100.
+    mockedRenderer.domElement = mockedCanvas;
+    vi.mocked(three.WebGLRenderer).mockReturnValue(mockedRenderer);
+  }
 
   afterEach(() => {
     vi.clearAllMocks();
     vi.resetAllMocks();
+
+    mockClear(mockedRenderer);
+    mockClear(mockedCanvas);
+    mockReset(mockedRenderer);
+    mockReset(mockedCanvas);
   });
 
   test('creating a renderer with empty canvas.getClientRects() should fail and return an error either', async () => {
@@ -263,41 +322,15 @@ describe('create a renderer fp-ts style', () => {
   });
 
   test('creating renderer with proper canvas and webglcontext should return a valid WebGLRenderer', async () => {
-    vi.stubGlobal('window', {
-      devicePixelRatio: 1,
-    });
+    mockValidCanvasAndRenderer();
 
-    // Code needs a canvas to create a renderer.
-    const width = 200;
-    const height = 100;
-
-    const context = mock<WebGL2RenderingContext>();
-
-    const rect = mock<DOMRect>();
-    rect.width = width;
-    rect.height = height;
-
-    const rectList = mock<DOMRectList>();
-    rectList.item.mockReturnValue(rect);
-
-    const canvas = mock<HTMLCanvasElement>();
-    canvas.getContext.mockReturnValue(context);
-    canvas.getClientRects.mockReturnValue(rectList);
-    canvas.width = rect.width;
-    canvas.height = rect.height;
-
-    // Mock webgl renderer with a canvas of size 100x100.
-    const renderer = mock<THREE.WebGLRenderer>();
-    renderer.domElement = canvas;
-    vi.mocked(three.WebGLRenderer).mockReturnValue(renderer);
-
-    const set = STAGE.createRenderer(canvas);
+    const set = STAGE.createRenderer(mockedCanvas);
     expect(E.isRight(set)).toBe(true);
     E.fold(
       (error) => expect(error).toBeUndefined(),
       (value: THREE.WebGLRenderer) => {
-        expect(value).toBe(renderer);
-        expect(value.domElement).toBe(canvas);
+        expect(value).toBe(mockedRenderer);
+        expect(value.domElement).toBe(mockedCanvas);
         expect(three.WebGLRenderer).toHaveBeenCalledTimes(1);
         expect(three.WebGLRenderer).toHaveBeenCalledWith({
           canvas: value.domElement,
@@ -305,5 +338,23 @@ describe('create a renderer fp-ts style', () => {
         });
       },
     )(set);
+  });
+
+  test('creating a technical set with a renderer should return a valid TechnicalSet', async () => {
+    const mockedRenderer = getAndPrepareRendererMockForTechnicalSet();
+
+    const eitherSet = F.pipe(
+      E.right(mockedRenderer),
+      STAGE.createTechnicalSet(),
+    );
+
+    expect(E.isRight(eitherSet)).toBe(true);
+    E.fold(
+      (error) => expect(error).toBeUndefined(),
+      (value: STAGE.TechnicalSet) => {
+        expect(value).toBeInstanceOf(STAGE.TechnicalSet);
+        expect(value.renderer).toBe(mockedRenderer);
+      },
+    )(eitherSet);
   });
 });
