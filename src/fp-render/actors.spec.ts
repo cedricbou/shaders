@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 
-import * as MESH from './Mesh';
+import * as MESH from './actors';
 
 import * as F from 'fp-ts/lib/function';
 import * as O from 'fp-ts/lib/Option';

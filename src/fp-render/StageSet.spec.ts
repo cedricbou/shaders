@@ -14,7 +14,7 @@ import {
   addActor,
 } from './StageSet';
 
-import * as MESH from './Mesh';
+import * as MESH from './actors';
 
 import * as E from 'fp-ts/lib/Either';
 import * as F from 'fp-ts/lib/function';

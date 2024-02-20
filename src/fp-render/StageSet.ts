@@ -3,8 +3,8 @@
  */
 import * as THREE from 'three';
 
-import * as CONTROLS from './primitives/Controls';
-import * as MESH from './Mesh';
+import * as CONTROLS from './primitives';
+import * as MESH from './actors';
 
 /**
  * Import fp-ts, a functional programming library for TypeScript.

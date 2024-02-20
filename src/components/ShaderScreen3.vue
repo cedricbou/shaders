@@ -14,8 +14,8 @@ import * as E from 'fp-ts/lib/Either';
 import * as F from 'fp-ts/lib/function';
 
 import * as STAGE from '../fp-render/stage-set';
-import * as MESH from '../fp-render/Mesh';
-import * as CONTROLS from '../fp-render/primitives/Controls';
+import * as MESH from '../fp-render/actors';
+import * as CONTROLS from '../fp-render/primitives';
 
 /**
  * Import our shader code from assets, as string.
@@ -43,7 +43,6 @@ onMounted(() => {
     STAGE.createTechnicalSet(),
     // Fill in the set and start loop.
     E.map((set) => {
-
       set.withDefaultLighting();
       set.scene.add(CONTROLS.createStageGrid(10));
 
@@ -71,8 +70,6 @@ onMounted(() => {
     }),
   );
 });
-
-
 </script>
 
 <template>
@@ -128,3 +125,4 @@ onMounted(() => {
 }
 </style>
 ../fp-render/ThreeFunctionalSet../fp-render/StageSet
+../fp-render/primitives/primitives ../fp-render/actors

@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 import { mock, mockClear, mockReset } from 'vitest-mock-extended';
 
 import * as STAGE from './stage-set';
-import * as MESH from './Mesh';
+import * as MESH from './actors';
 
 import * as E from 'fp-ts/Either';
 import * as O from 'fp-ts/Option';
@@ -10,11 +10,8 @@ import * as F from 'fp-ts/function';
 
 vi.mock('three');
 
-let three: typeof import('three');
-let threeActual: typeof import('three');
-
-three = await import('three');
-threeActual = await vi.importActual<typeof import('three')>('three');
+const three = await import('three');
+const threeActual = await vi.importActual<typeof import('three')>('three');
 
 function getAndPrepareRendererMockForTechnicalSet() {
   // Initialize the technical set to be tested
@@ -237,8 +234,8 @@ describe('The technical set', () => {
 });
 
 describe('create a renderer fp-ts style', () => {
-  let mockedRenderer = mock<THREE.WebGLRenderer>();
-  let mockedCanvas = mock<HTMLCanvasElement>();
+  const mockedRenderer = mock<THREE.WebGLRenderer>();
+  const mockedCanvas = mock<HTMLCanvasElement>();
 
   function mockValidCanvasAndRenderer() {
     vi.stubGlobal('window', {

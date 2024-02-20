@@ -155,4 +155,4 @@ onMounted(() => {
   }
 }
 </style>
-../fp-render/ThreeFunctionalSet../fp-render/StageSet
+../fp-render/ThreeFunctionalSet../fp-render/StageSet ../fp-render/actors
