@@ -129,7 +129,7 @@ describe('The technical set', () => {
     set.animate(0.2);
     expect(set.uniforms.iTime.value).toBe(0.2);
     set.animate(0.5);
-    expect(set.uniforms.iTime.value).toBe(0.5);
+    expect(set.uniforms.iTime.value).toBe(0.7);
   });
 
   test('should animate a frame and call render on animateAndRender', async () => {

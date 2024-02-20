@@ -161,16 +161,20 @@ export class TechnicalSet {
    */
   public animate(delta: number): void {
     this.shaderToyzUniformAnimator(delta);
+
+    this.actors.forEach((actor) => {
+      actor.animators.forEach((animator) => animator(delta));
+    });
   }
 
   /**
    * Update an animation frame and render the set.
    */
   public animateAndRender(): void {
-    this.animate(this.clock.getDelta());
-    this.actors.forEach((actor) => {
-      actor.animators.forEach((animator) => animator(this.clock.getDelta()));
-    });
+    const delta = this.clock.getDelta();
+
+    this.animate(delta);
+
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -184,6 +188,7 @@ export class TechnicalSet {
     };
 
     this.clock.start();
+
     window.requestAnimationFrame(animateLoop);
   }
 

@@ -7,9 +7,69 @@ import * as O from 'fp-ts/lib/Option';
 
 import * as THREE from 'three';
 
-describe('Geometries and materials creation and modifiers', () => {
-  beforeEach(async () => {});
+describe('Create and mofify an actor', () => {
+  let actor: MESH.Actor;
+  let mesh: THREE.Mesh;
 
+  beforeEach(() => {
+    mesh = new THREE.Mesh();
+    actor = new MESH.Actor(mesh);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.resetAllMocks();
+  });
+
+  test('should be able to create an actor', () => {
+    expect(actor).toBeDefined();
+    expect(actor).toBeInstanceOf(MESH.Actor);
+
+    expect(actor.mesh).toBeDefined();
+    expect(actor.mesh).toBeInstanceOf(THREE.Mesh);
+    expect(actor.mesh).toBe(mesh);
+
+    expect(actor.animators).toBeDefined();
+    expect(actor.animators).toHaveLength(0);
+  });
+
+  test('should be able to set up a random material to an actor', () => {
+    const chainedActor = actor.withRandomMaterial();
+
+    expect(chainedActor).toBeDefined();
+    expect(chainedActor).toBe(actor);
+
+    expect(actor.mesh.material).toBeDefined();
+    expect(MESH.PREDIFINED_MATERIALS).toContain(actor.mesh.material);
+  });
+
+  test('should be able to set up a shader to an actor', () => {
+    const vertexShader = 'vertexShader';
+    const fragmentShader = 'fragmentShader';
+
+    const chainedActor = actor.withShader(vertexShader, fragmentShader, {
+      iTime: { value: 10 },
+    });
+
+    expect(chainedActor).toBeDefined();
+    expect(chainedActor).toBe(actor);
+
+    expect(actor.mesh.material).toBeDefined();
+    expect(actor.mesh.material).toBeInstanceOf(THREE.RawShaderMaterial);
+    expect((actor.mesh.material as THREE.RawShaderMaterial).vertexShader).toBe(
+      vertexShader,
+    );
+    expect(
+      (actor.mesh.material as THREE.RawShaderMaterial).fragmentShader,
+    ).toBe(fragmentShader);
+
+    expect(
+      (actor.mesh.material as THREE.RawShaderMaterial).uniforms.iTime.value,
+    ).toBe(10);
+  });
+});
+
+describe('Geometries and materials creation and modifiers', () => {
   afterEach(() => {
     vi.clearAllMocks();
     vi.resetAllMocks();

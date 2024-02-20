@@ -45,6 +45,6 @@ export function shaderToyzAnimator(
   uniforms: Record<string, THREE.IUniform>,
 ): Animator {
   return function (delta: number) {
-    uniforms.iTime.value = delta;
+    uniforms.iTime.value += delta;
   };
 }

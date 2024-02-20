@@ -20,8 +20,8 @@ import * as CONTROLS from '../fp-render/primitives';
 /**
  * Import our shader code from assets, as string.
  */
-// import fragmentShader from '../assets/shaders/starrycube.frag.glsl?raw';
-// import vertexShader from '../assets/shaders/starrycube.vert.glsl?raw';
+import fragmentShader from '../assets/shaders/starrycube.frag.glsl?raw';
+import vertexShader from '../assets/shaders/starrycube.vert.glsl?raw';
 
 const props = defineProps<{
   forceError?: string;
@@ -49,13 +49,10 @@ onMounted(() => {
       CONTROLS.createOrbitControl(set.camera, set.renderer.domElement);
 
       const cube = new MESH.Actor(
-        new THREE.Mesh(
-          new THREE.BoxGeometry(1, 1, 1),
-          new THREE.MeshStandardMaterial({
-            color: 0x00ff00,
-          }),
-        ),
+        new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1)),
       );
+
+      cube.withShader(vertexShader, fragmentShader, set.uniforms);
 
       cube.mesh.position.z = 0;
 
