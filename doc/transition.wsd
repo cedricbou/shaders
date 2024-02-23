@@ -1,0 +1,34 @@
+@startuml Transition
+
+/'
+ ' Energy is a concept that can be produced.
+ '/
+abstract class energy
+energy : production(float time) : float
+
+/'
+ ' Usage of an energy
+ '/
+abstract class usage
+usage : consumption(float time) : float
+
+
+/'
+ ' Primary energy sources : easy to exploit, like petrol, coal, gas, burning wood.
+ ' Straight forward transformation of the source to energy by burning, low tech for conversion.
+ '/
+class source extends energy, usage
+
+/'
+ ' Secondary energy source : transform something into electricity but with a device that needs to be build.
+ ' More complex transformation of the source to energy by using a device, high tech for conversion.
+ '/
+class converter extends energy, usage
+
+
+/'
+ ' A grid receives converge source of energies and make it availabe for usages
+ '/
+class grid
+
+@enduml
