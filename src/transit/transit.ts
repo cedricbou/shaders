@@ -1,19 +1,54 @@
 export interface IEnergySource {
-  consume(): void;
+  connectUsage(usage: IEnergyUsage): void;
+  measure(elapsedTime: number): void;
 }
 
 export interface IEnergyUsage {
-  consume(): void;
+  expectedConsumption(elapsedTime: number): number;
+}
+
+export enum Pollutions {
+  CO2 = 'CO2',
 }
 
 export class SimplifiedCoalPowerPlant implements IEnergySource {
+  private static readonly CO2_EMISSIONS = 740;
+
+  private readonly usages: IEnergyUsage[] = [];
+
+  private consumption: number = 0;
+
+  private readonly pollutions: Map<Pollutions, number> = new Map();
+
   constructor() {}
-  consume() {}
+
+  connectUsage(usage: IEnergyUsage) {
+    this.usages.push(usage);
+  }
+
+  measure(elapsedTime: number) {
+    for (const usage of this.usages) {
+      this.consumption = usage.expectedConsumption(elapsedTime);
+      this.pollutions.set(
+        Pollutions.CO2,
+        SimplifiedCoalPowerPlant.CO2_EMISSIONS * this.consumption,
+      );
+    }
+  }
+
+  getConsumption() {
+    return this.consumption;
+  }
+
+  getPollution(pollution: Pollutions) {
+    return this.pollutions.get(pollution) || 0;
+  }
 }
 
 export class SimplifiedWindmill implements IEnergySource {
   constructor() {}
-  consume() {}
+  connectUsage(usage: IEnergyUsage) {}
+  measure(elapsedTime: number) {}
 }
 
 export class WindMillFactory {
@@ -29,7 +64,9 @@ export class SimpleEnergyGrid {
 
 export class HumanUsages implements IEnergyUsage {
   constructor() {}
-  consume() {}
+  expectedConsumption(elapsedTime: number) {
+    return 0;
+  }
 }
 
 export class WindmillSimulation {

@@ -3,6 +3,12 @@ import { mock, mockClear, mockReset } from 'vitest-mock-extended';
 
 import * as tx from './transit';
 
+class SteadyUsage implements tx.IEnergyUsage {
+  expectedConsumption(elapsedTime: number) {
+    return 1000 * elapsedTime;
+  }
+}
+
 /**
  * Check if with limited primary energy resource we can build secondary
  * source of energy and use them to build and maintain only secondary energy
@@ -60,10 +66,33 @@ describe('A simple energy transformation scenario', () => {
 });
 
 describe('A coal power plant', () => {
-  test('should consume coal', () => {
+  test('should produce a steady energy coal under constant load below capacity', () => {
+    // Create our power plant
     const coalPowerPlant = new tx.SimplifiedCoalPowerPlant();
-    const consume = mock(coalPowerPlant.consume);
-    coalPowerPlant.consume();
-    expect(consume).toHaveBeenCalled();
+
+    // Connect a steady usage below capacity
+    coalPowerPlant.connectUsage(new SteadyUsage());
+
+    // Check it starts with zero metrics
+    expect(coalPowerPlant.getPollution(tx.Pollutions.CO2)).toBe(0);
+    expect(coalPowerPlant.getConsumption()).toBe(0);
+
+    // Measure the power plant after 100 hours since turned on
+    coalPowerPlant.measure(100);
+
+    let expectedConsumption = 100 * 1000;
+    let expectedCo2 = 740 * expectedConsumption;
+
+    expect(coalPowerPlant.getConsumption()).toBe(expectedConsumption);
+    expect(coalPowerPlant.getPollution(tx.Pollutions.CO2)).toBe(expectedCo2);
+
+    // Check after 1000 hours since turned on
+    coalPowerPlant.measure(1000);
+
+    expectedConsumption = 1000 * 1000;
+    expectedCo2 = 740 * expectedConsumption;
+
+    expect(coalPowerPlant.getConsumption()).toBe(expectedConsumption);
+    expect(coalPowerPlant.getPollution(tx.Pollutions.CO2)).toBe(expectedCo2);
   });
 });
