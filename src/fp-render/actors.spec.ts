@@ -43,6 +43,22 @@ describe('Create and mofify an actor', () => {
     expect(MESH.PREDIFINED_MATERIALS).toContain(actor.mesh.material);
   });
 
+  test('should be able to add an animator to an actor', () => {
+    const meshAnimator = vi.fn();
+    const animator = vi.fn().mockImplementation(() => meshAnimator);
+
+    const chainedActor = actor.withAnimator(animator);
+
+    expect(chainedActor).toBeDefined();
+    expect(chainedActor).toBe(actor);
+
+    expect(actor.animators).toBeDefined();
+    expect(actor.animators).toHaveLength(1);
+    expect(actor.animators[0]).toBe(meshAnimator);
+    expect(animator).toBeCalledTimes(1);
+    expect(animator).toBeCalledWith(actor.mesh);
+  });
+
   test('should be able to set up a shader to an actor', () => {
     const vertexShader = 'vertexShader';
     const fragmentShader = 'fragmentShader';

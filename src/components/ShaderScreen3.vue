@@ -53,6 +53,10 @@ onMounted(() => {
       );
 
       cube.withShader(vertexShader, fragmentShader, set.uniforms);
+      cube.withAnimator((mesh) => (time: number) => {
+        mesh.rotation.x += time * 0.5;
+        mesh.rotation.y += time * 0.5;
+      });
 
       cube.mesh.position.z = 0;
 

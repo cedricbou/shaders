@@ -24,6 +24,13 @@ export class Actor {
     return this;
   }
 
+  public withAnimator(
+    animator: (mesh: THREE.Mesh) => (time: number) => void,
+  ): Actor {
+    this.animators.push(animator(this.mesh));
+    return this;
+  }
+
   public withShader(
     vertexShader: string,
     fragmentShader: string,
