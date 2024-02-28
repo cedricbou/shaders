@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 import { mock, mockClear, mockReset } from 'vitest-mock-extended';
 
 import * as tx from './transit';
+import { exp } from 'three/examples/jsm/nodes/Nodes.js';
 
 class SteadyUsage implements tx.IEnergyUsage {
   expectedConsumption(elapsedTime: number) {
@@ -94,5 +95,56 @@ describe('A coal power plant', () => {
 
     expect(coalPowerPlant.getConsumption()).toBe(expectedConsumption);
     expect(coalPowerPlant.getPollution(tx.Pollutions.CO2)).toBe(expectedCo2);
+  });
+});
+
+describe('a windmill factory', () => {
+  test('should produce a windmill', () => {
+    const factory = new tx.WindMillFactory();
+
+    const windmill = factory.build();
+
+    expect(windmill).toBeDefined();
+    expect(windmill.getLifespan()).toBe(30 * 24 * 365);
+    expect(windmill.getConsumption()).toBe(0);
+    expect(windmill.getPollution(tx.Pollutions.CO2)).toBe(0);
+  });
+});
+
+describe('a simplified windmill', () => {
+  test('should produce a steady energy under constant load below capacity', () => {
+    const windmill = new tx.SimplifiedWindmill();
+
+    windmill.connectUsage(new SteadyUsage());
+
+    expect(windmill.getPollution(tx.Pollutions.CO2)).toBe(0);
+    expect(windmill.getConsumption()).toBe(0);
+
+    windmill.measure(100);
+
+    expect(windmill.getConsumption()).toBe(0);
+    expect(windmill.getPollution(tx.Pollutions.CO2)).toBe(0);
+  });
+
+  test('should have a lifespan of 30 years', () => {
+    const windmill = new tx.SimplifiedWindmill();
+
+    expect(windmill.getLifespan()).toBe(30 * 24 * 365);
+  });
+
+  test('lifespan should linearly decrease with time', () => {
+    const windmill = new tx.SimplifiedWindmill();
+    windmill.measure(100);
+
+    expect(windmill.getLifespan()).toBe(30 * 24 * 365 - 100);
+  });
+
+  test('lifespan should be 0 after EOL', () => {
+    const windmill = new tx.SimplifiedWindmill();
+    windmill.measure(30 * 24 * 365);
+    expect(windmill.getLifespan()).toBe(0);
+
+    windmill.measure(2 * 30 * 24 * 365);
+    expect(windmill.getLifespan()).toBe(0);
   });
 });

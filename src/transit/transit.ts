@@ -1,10 +1,18 @@
 export interface IEnergySource {
   connectUsage(usage: IEnergyUsage): void;
   measure(elapsedTime: number): void;
+
+  getConsumption(): number;
+  getPollution(pollution: Pollutions): number;
+  getLifespan(): number;
 }
 
 export interface IEnergyUsage {
   expectedConsumption(elapsedTime: number): number;
+}
+
+export interface IEnergySourceFactory {
+  build(): IEnergySource;
 }
 
 export enum Pollutions {
@@ -20,6 +28,8 @@ export class SimplifiedCoalPowerPlant implements IEnergySource {
 
   private readonly pollutions: Map<Pollutions, number> = new Map();
 
+  private lifespan: number = 100 * 24 * 365;
+
   constructor() {}
 
   connectUsage(usage: IEnergyUsage) {
@@ -34,6 +44,7 @@ export class SimplifiedCoalPowerPlant implements IEnergySource {
         SimplifiedCoalPowerPlant.CO2_EMISSIONS * this.consumption,
       );
     }
+    this.lifespan = Math.max(0, this.lifespan - elapsedTime);
   }
 
   getConsumption() {
@@ -43,17 +54,40 @@ export class SimplifiedCoalPowerPlant implements IEnergySource {
   getPollution(pollution: Pollutions) {
     return this.pollutions.get(pollution) || 0;
   }
+
+  getLifespan() {
+    return this.lifespan;
+  }
 }
 
 export class SimplifiedWindmill implements IEnergySource {
+  private lifespan: number = 30 * 24 * 365;
+
   constructor() {}
   connectUsage(usage: IEnergyUsage) {}
-  measure(elapsedTime: number) {}
+  measure(elapsedTime: number) {
+    this.lifespan = Math.max(0, this.lifespan - elapsedTime);
+  }
+
+  getConsumption() {
+    return 0;
+  }
+
+  getPollution(pollution: Pollutions) {
+    return 0;
+  }
+
+  getLifespan() {
+    return this.lifespan;
+  }
 }
 
-export class WindMillFactory {
+export class WindMillFactory implements IEnergySourceFactory {
   constructor() {}
-  create() {}
+
+  build() {
+    return new SimplifiedWindmill();
+  }
 }
 
 export class SimpleEnergyGrid {
