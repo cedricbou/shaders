@@ -104,10 +104,34 @@ export class HumanUsages implements IEnergyUsage {
 }
 
 export class WindmillSimulation {
-  constructor(grid: SimpleEnergyGrid, windMillFactory: WindMillFactory) {}
-  start() {}
-  step() {}
-  totalConsumption() {}
-  totalPollution() {}
-  totalWindMill() {}
+  private readonly grid: SimpleEnergyGrid;
+
+  private readonly windMillFactory: WindMillFactory;
+
+  constructor(grid: SimpleEnergyGrid, windMillFactory: WindMillFactory) {
+    this.grid = grid;
+    this.windMillFactory = windMillFactory;
+  }
+
+  step(ellapsedTime: number) {
+
+    // reset
+    // TODO : is it here I need to make discrete simulation to detect when to build a new windmill?
+
+    // Or I could try a regression like :
+    while (!this.grid.attemptRunFor(ellapsedTime)) {
+      const windmill = this.windMillFactory.build();
+      this.grid.connectSource(windmill);
+    }
+  }
+
+  totalConsumption() {
+    return this.grid.totalConsumption();
+  }
+  totalPollution() {
+    return this.grid.totalPollution();
+  }
+  totalWindMill() {
+    return this.grid.
+  }
 }

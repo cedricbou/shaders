@@ -45,24 +45,18 @@ describe('A simple energy transformation scenario', () => {
 
     const grid = new tx.SimpleEnergyGrid();
 
-    const humanUsages = new tx.HumanUsages();
+    const mockedUsage = new SteadyUsage();
 
     grid.connectSource(coalPowerPlant);
-    grid.connectUsage(humanUsages);
+    grid.connectUsage(mockedUsage);
 
     const simulation = new tx.WindmillSimulation(grid, windMillFactory);
+    simulation.step(100);
 
-    vi.setSystemTime(new Date(2010, 1, 1, 19));
-
-    simulation.start();
-
-    vi.setSystemTime(new Date(2030, 1, 1, 19));
-
-    simulation.step();
-
-    expect(simulation.totalConsumption()).toBeGreaterThan(0);
+    expect(simulation.totalConsumption()).toBe(100 * 1000);
     expect(simulation.totalPollution()).toBeLessThan(1000);
-    expect(simulation.totalWindMill()).toBeLessThan(50000);
+    expect(simulation.totalWindMill()).toBeGreaterThan(100);
+    expect(simulation.totalWindMill()).toBeLessThan(120);
   });
 });
 
