@@ -2,143 +2,129 @@ import { describe, expect, test, vi } from 'vitest';
 import { mock, mockClear, mockReset } from 'vitest-mock-extended';
 
 import * as tx from './transit';
-import { exp } from 'three/examples/jsm/nodes/Nodes.js';
+import exp from 'constants';
+import ts from 'typescript';
 
-class SteadyUsage implements tx.IEnergyUsage {
-  expectedConsumption(elapsedTime: number) {
-    return 1000 * elapsedTime;
-  }
-}
+describe('A steady energy load', () => {
+  test('should require a constant load at any time', () => {
+    const steady = new tx.SteadyEnergyUsage(100);
 
-/**
- * Check if with limited primary energy resource we can build secondary
- * source of energy and use them to build and maintain only secondary energy
- * source
- *
- * We'll use a burning energy like coal as the primary source of energy.
- * We'll use simplified wind turbine as the secondary source of energy.
- *
- * We'll assume a constant consumption of energy for human usages.
- *
- * The test succeed if the creation of newer wind turbines can be done
- * with existing wind turbines
- */
-describe('A simple energy transformation scenario', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
+    expect(steady.load()).toBe(100);
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  test('should allow providing enough energy for usages while allowing maintaining enough windmills', () => {
-    // Given a coal power plant with a limited amount of coal, constant production and known pollutions.
-    const coalPowerPlant = new tx.SimplifiedCoalPowerPlant();
-
-    // Given a windmill known constant production and known pollutions and consumption for its maintenance.
-    // The Windmill has a known lifespan before being replaced.
-    // const windmill = new SimplifiedWindmill();
-
-    // Given a windmill
-    const windMillFactory = new tx.WindMillFactory();
-
-    const grid = new tx.SimpleEnergyGrid();
-
-    const mockedUsage = new SteadyUsage();
-
-    grid.connectSource(coalPowerPlant);
-    grid.connectUsage(mockedUsage);
-
-    const simulation = new tx.WindmillSimulation(grid, windMillFactory);
-    simulation.step(100);
-
-    expect(simulation.totalConsumption()).toBe(100 * 1000);
-    expect(simulation.totalPollution()).toBeLessThan(1000);
-    expect(simulation.totalWindMill()).toBeGreaterThan(100);
-    expect(simulation.totalWindMill()).toBeLessThan(120);
+    for (let i = 0; i < 100; i++) {
+      steady.iterate();
+      expect(steady.load()).toBe(100);
+    }
   });
 });
 
-describe('A coal power plant', () => {
-  test('should produce a steady energy coal under constant load below capacity', () => {
-    // Create our power plant
-    const coalPowerPlant = new tx.SimplifiedCoalPowerPlant();
+describe('An energy source', () => {
+  test('should be able to support totally any amount of load below its capacity', () => {
+    const totalQuanity = 10000;
+    const maximumCapacity = 100;
+    const source = new tx.EnergySource(totalQuanity, maximumCapacity);
+    expect(source.outOfEnergy()).toBe(false);
 
-    // Connect a steady usage below capacity
-    coalPowerPlant.connectUsage(new SteadyUsage());
+    const testLoad1 = 50;
+    const testLoad2 = 100;
+    const testLoad3 = 20;
 
-    // Check it starts with zero metrics
-    expect(coalPowerPlant.getPollution(tx.Pollutions.CO2)).toBe(0);
-    expect(coalPowerPlant.getConsumption()).toBe(0);
+    const remaining1 = source.iterate(testLoad1);
+    expect(source.outOfEnergy()).toBe(false);
+    expect(source.getEnergyQuantity()).toBe(totalQuanity - testLoad1);
+    expect(remaining1).toBe(0);
 
-    // Measure the power plant after 100 hours since turned on
-    coalPowerPlant.measure(100);
+    const remaining2 = source.iterate(testLoad2);
+    expect(source.outOfEnergy()).toBe(false);
+    expect(source.getEnergyQuantity()).toBe(
+      totalQuanity - testLoad1 - testLoad2,
+    );
+    expect(remaining2).toBe(0);
 
-    let expectedConsumption = 100 * 1000;
-    let expectedCo2 = 740 * expectedConsumption;
+    const remaining3 = source.iterate(testLoad3);
+    expect(source.outOfEnergy()).toBe(false);
+    expect(source.getEnergyQuantity()).toBe(
+      totalQuanity - testLoad1 - testLoad2 - testLoad3,
+    );
+    expect(remaining3).toBe(0);
+  });
 
-    expect(coalPowerPlant.getConsumption()).toBe(expectedConsumption);
-    expect(coalPowerPlant.getPollution(tx.Pollutions.CO2)).toBe(expectedCo2);
+  test('should cap the load to its capacity when overloaded', () => {
+    const totalQuanity = 10000;
+    const maximumCapacity = 100;
+    const source = new tx.EnergySource(totalQuanity, maximumCapacity);
 
-    // Check after 1000 hours since turned on
-    coalPowerPlant.measure(1000);
+    const testLoad1 = 150;
+    const testLoad2 = 200;
+    const testLoad3 = 120;
 
-    expectedConsumption = 1000 * 1000;
-    expectedCo2 = 740 * expectedConsumption;
+    const remaining1 = source.iterate(testLoad1);
+    expect(source.outOfEnergy()).toBe(false);
+    expect(source.getEnergyQuantity()).toBe(totalQuanity - maximumCapacity);
+    expect(remaining1).toBe(testLoad1 - maximumCapacity);
 
-    expect(coalPowerPlant.getConsumption()).toBe(expectedConsumption);
-    expect(coalPowerPlant.getPollution(tx.Pollutions.CO2)).toBe(expectedCo2);
+    const remaining2 = source.iterate(testLoad2);
+    expect(source.outOfEnergy()).toBe(false);
+    expect(source.getEnergyQuantity()).toBe(totalQuanity - maximumCapacity * 2);
+    expect(remaining2).toBe(testLoad2 - maximumCapacity);
+
+    const remaining3 = source.iterate(testLoad3);
+    expect(source.outOfEnergy()).toBe(false);
+    expect(source.getEnergyQuantity()).toBe(totalQuanity - maximumCapacity * 3);
+    expect(remaining3).toBe(testLoad3 - maximumCapacity);
+  });
+
+  // TODO: Actually we should clarify the behavior when a load is above the capacity
+  //       Should we disconnect the source, like in real life ?
+  //       Or should we just cap the load to the capacity, like it's done for now.
+  test('should throw an error when out of energy', () => {
+    const totalQuanity = 300;
+    const maximumCapacity = 300;
+    const source = new tx.EnergySource(totalQuanity, maximumCapacity);
+
+    const testLoad = 10000;
+
+    const remaining = source.iterate(testLoad);
+
+    expect(source.outOfEnergy()).toBe(true);
+    expect(remaining).toBe(testLoad - totalQuanity);
+
+    expect(() => source.iterate(1)).toThrow('Out of energy');
+  });
+
+  test('acting as a Windmill should be able to produce 1MW of energy per iteration and up to 50GW throuhg its life', () => {
+    const windmill = new tx.WindTurbine();
+
+    expect(windmill.getEnergyQuantity()).toBe(50000);
+
+    expect(windmill.iterate(2)).toBe(1);
+    expect(windmill.iterate(5)).toBe(4);
+    expect(windmill.iterate(1)).toBe(0);
+  });
+
+  test('acting as a Coal Power Plant should be able to produce 1GW of energy per iteration and up to 219GW throuhg its life', () => {
+    const plant = new tx.CoalPowerPlant();
+
+    expect(plant.getEnergyQuantity()).toBe(219000000);
+
+    expect(plant.iterate(2000)).toBe(1000);
+    expect(plant.iterate(4000)).toBe(3000);
+    expect(plant.iterate(1000)).toBe(0);
   });
 });
 
-describe('a windmill factory', () => {
-  test('should produce a windmill', () => {
-    const factory = new tx.WindMillFactory();
+describe('A Wind Turbine Factory', () => {
+  test('should not consume anything if no windmill has been built', () => {
+    const factory = new tx.WindTurbineFactory();
 
-    const windmill = factory.build();
+    expect(factory.getConsumption()).toBe(0);
+    expect(factory.getBuilt()).toBe(0);
+    expect(factory.load()).toBe(0);
 
-    expect(windmill).toBeDefined();
-    expect(windmill.getLifespan()).toBe(30 * 24 * 365);
-    expect(windmill.getConsumption()).toBe(0);
-    expect(windmill.getPollution(tx.Pollutions.CO2)).toBe(0);
-  });
-});
+    factory.iterate();
 
-describe('a simplified windmill', () => {
-  test('should produce a steady energy under constant load below capacity', () => {
-    const windmill = new tx.SimplifiedWindmill();
-
-    windmill.connectUsage(new SteadyUsage());
-
-    expect(windmill.getPollution(tx.Pollutions.CO2)).toBe(0);
-    expect(windmill.getConsumption()).toBe(0);
-
-    windmill.measure(100);
-
-    expect(windmill.getConsumption()).toBe(0);
-    expect(windmill.getPollution(tx.Pollutions.CO2)).toBe(0);
-  });
-
-  test('should have a lifespan of 30 years', () => {
-    const windmill = new tx.SimplifiedWindmill();
-
-    expect(windmill.getLifespan()).toBe(30 * 24 * 365);
-  });
-
-  test('lifespan should linearly decrease with time', () => {
-    const windmill = new tx.SimplifiedWindmill();
-    windmill.measure(100);
-
-    expect(windmill.getLifespan()).toBe(30 * 24 * 365 - 100);
-  });
-
-  test('lifespan should be 0 after EOL', () => {
-    const windmill = new tx.SimplifiedWindmill();
-    windmill.measure(30 * 24 * 365);
-    expect(windmill.getLifespan()).toBe(0);
-
-    windmill.measure(2 * 30 * 24 * 365);
-    expect(windmill.getLifespan()).toBe(0);
+    expect(factory.getConsumption()).toBe(0);
+    expect(factory.getBuilt()).toBe(0);
+    expect(factory.load()).toBe(0);
   });
 });

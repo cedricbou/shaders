@@ -1,137 +1,208 @@
-export interface IEnergySource {
-  connectUsage(usage: IEnergyUsage): void;
-  measure(elapsedTime: number): void;
-
-  getConsumption(): number;
-  getPollution(pollution: Pollutions): number;
-  getLifespan(): number;
+export enum SimulationStatus {
+  Start,
+  InProgress,
+  End,
 }
 
-export interface IEnergyUsage {
-  expectedConsumption(elapsedTime: number): number;
+export interface Load {
+  load(): number;
+  iterate(): void;
 }
 
-export interface IEnergySourceFactory {
-  build(): IEnergySource;
+export class SteadyEnergyUsage implements Load {
+  constructor(private readonly loadValue: number = 1000) {}
+
+  public load(): number {
+    return this.loadValue;
+  }
+
+  public iterate() {}
 }
 
-export enum Pollutions {
-  CO2 = 'CO2',
-}
-
-export class SimplifiedCoalPowerPlant implements IEnergySource {
-  private static readonly CO2_EMISSIONS = 740;
-
-  private readonly usages: IEnergyUsage[] = [];
-
+export class WindTurbineFactory implements Load {
+  private builtSinceLastIteration: number = 0;
+  private built: number = 0;
   private consumption: number = 0;
 
-  private readonly pollutions: Map<Pollutions, number> = new Map();
-
-  private lifespan: number = 100 * 24 * 365;
-
-  constructor() {}
-
-  connectUsage(usage: IEnergyUsage) {
-    this.usages.push(usage);
+  public load(): number {
+    return 80 * this.builtSinceLastIteration;
   }
 
-  measure(elapsedTime: number) {
-    for (const usage of this.usages) {
-      this.consumption = usage.expectedConsumption(elapsedTime);
-      this.pollutions.set(
-        Pollutions.CO2,
-        SimplifiedCoalPowerPlant.CO2_EMISSIONS * this.consumption,
-      );
-    }
-    this.lifespan = Math.max(0, this.lifespan - elapsedTime);
+  public build(): WindTurbine {
+    this.builtSinceLastIteration++;
+    this.built++;
+    return new WindTurbine();
   }
 
-  getConsumption() {
+  public iterate() {
+    this.consumption += this.load();
+    this.builtSinceLastIteration = 0;
+  }
+
+  public getBuilt(): number {
+    return this.built;
+  }
+
+  public getConsumption(): number {
     return this.consumption;
   }
+}
 
-  getPollution(pollution: Pollutions) {
-    return this.pollutions.get(pollution) || 0;
+export class EnergySource {
+  constructor(
+    private energyQuantity: number,
+    private readonly energyCapacity: number,
+  ) {}
+
+  public iterate(load: number): number {
+    if (this.outOfEnergy()) {
+      throw new Error('Out of energy');
+    }
+
+    const applicable = Math.min(
+      this.energyQuantity,
+      Math.min(this.energyCapacity, load),
+    );
+
+    this.energyQuantity -= applicable;
+
+    return load - applicable;
   }
 
-  getLifespan() {
-    return this.lifespan;
+  public outOfEnergy(): boolean {
+    return this.energyQuantity <= 0;
+  }
+
+  public getEnergyQuantity(): number {
+    return this.energyQuantity;
   }
 }
 
-export class SimplifiedWindmill implements IEnergySource {
-  private lifespan: number = 30 * 24 * 365;
-
-  constructor() {}
-  connectUsage(usage: IEnergyUsage) {}
-  measure(elapsedTime: number) {
-    this.lifespan = Math.max(0, this.lifespan - elapsedTime);
-  }
-
-  getConsumption() {
-    return 0;
-  }
-
-  getPollution(pollution: Pollutions) {
-    return 0;
-  }
-
-  getLifespan() {
-    return this.lifespan;
+export class WindTurbine extends EnergySource {
+  constructor() {
+    super(50000, 1);
   }
 }
 
-export class WindMillFactory implements IEnergySourceFactory {
-  constructor() {}
-
-  build() {
-    return new SimplifiedWindmill();
+export class CoalPowerPlant extends EnergySource {
+  constructor() {
+    super(219000000, 1000);
   }
 }
 
-export class SimpleEnergyGrid {
-  constructor() {}
-  connectSource(source: IEnergySource) {}
-  connectUsage(usage: IEnergyUsage) {}
-}
+export class Grid {
+  private consumption: number = 0;
 
-export class HumanUsages implements IEnergyUsage {
-  constructor() {}
-  expectedConsumption(elapsedTime: number) {
-    return 0;
+  constructor(
+    private readonly loads: Array<Load>,
+    private sources: Array<EnergySource>,
+  ) {}
+
+  private sumLoads(): number {
+    return this.loads.reduce((acc, load) => acc + load.load(), 0);
+  }
+
+  public countSources(): number {
+    return this.sources.reduce(
+      (acc, source) => acc + (source.outOfEnergy() ? 0 : 1),
+      0,
+    );
+  }
+
+  private garbageSources() {
+    this.sources = this.sources.filter((source) => !source.outOfEnergy());
+  }
+
+  private shareLoad(load: number): number {
+    const count = this.countSources();
+    const shared = load / count;
+    let remaining = 0;
+
+    this.sources.forEach((source) => {
+      if (!source.outOfEnergy()) {
+        remaining += source.iterate(shared);
+      }
+    });
+
+    return remaining;
+  }
+
+  public iterate() {
+    let remaining = this.sumLoads();
+    this.consumption += remaining;
+
+    while (remaining > 0 && this.countSources() > 0) {
+      remaining = this.shareLoad(remaining);
+    }
+
+    this.consumption -= remaining;
+
+    this.garbageSources();
+
+    this.loads.forEach((load) => load.iterate());
+  }
+
+  public connect(source: EnergySource) {
+    this.sources.push(source);
+  }
+
+  public isOutOfEnergy(): boolean {
+    return this.countSources() === 0;
+  }
+
+  public getConsumption(): number {
+    return this.consumption;
   }
 }
 
-export class WindmillSimulation {
-  private readonly grid: SimpleEnergyGrid;
+export class Simulation {
+  private readonly grid: Grid;
+  private ellapsedHours: number = 0;
 
-  private readonly windMillFactory: WindMillFactory;
-
-  constructor(grid: SimpleEnergyGrid, windMillFactory: WindMillFactory) {
-    this.grid = grid;
-    this.windMillFactory = windMillFactory;
+  constructor(
+    coalPowerPlants: Array<CoalPowerPlant>,
+    private readonly windTurbineFactory: WindTurbineFactory,
+    private readonly maxIteration: number = 365 * 24 * 500,
+  ) {
+    this.grid = new Grid(
+      [new SteadyEnergyUsage(), windTurbineFactory],
+      [...coalPowerPlants],
+    );
   }
 
-  step(ellapsedTime: number) {
+  public iterate() {
+    this.grid.iterate();
+    this.ellapsedHours++;
 
-    // reset
-    // TODO : is it here I need to make discrete simulation to detect when to build a new windmill?
-
-    // Or I could try a regression like :
-    while (!this.grid.attemptRunFor(ellapsedTime)) {
-      const windmill = this.windMillFactory.build();
-      this.grid.connectSource(windmill);
+    // Built 5 new wind turbines yearly
+    if (this.ellapsedHours % 50 === 0) {
+      const turbine = this.windTurbineFactory.build();
+      this.grid.connect(turbine);
     }
   }
 
-  totalConsumption() {
-    return this.grid.totalConsumption();
+  public simulate(
+    progressCallback?: (ellapsedHour: number, status: SimulationStatus) => void,
+  ) {
+    progressCallback?.(this.ellapsedHours, SimulationStatus.Start);
+    while (
+      !this.grid.isOutOfEnergy() &&
+      this.ellapsedHours < this.maxIteration
+    ) {
+      this.iterate();
+
+      if (this.ellapsedHours % 1000 === 0) {
+        progressCallback?.(this.ellapsedHours, SimulationStatus.InProgress);
+      }
+    }
+    progressCallback?.(this.ellapsedHours, SimulationStatus.End);
   }
-  totalPollution() {
-    return this.grid.totalPollution();
+
+  public getGrid(): Grid {
+    return this.grid;
   }
-  totalWindMill() {
-    return this.grid.
+
+  public getMaximumIteration(): number {
+    return this.maxIteration;
   }
 }
