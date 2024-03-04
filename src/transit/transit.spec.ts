@@ -1,9 +1,6 @@
-import { describe, expect, test, vi } from 'vitest';
-import { mock, mockClear, mockReset } from 'vitest-mock-extended';
+import { describe, expect, test } from 'vitest';
 
 import * as tx from './transit';
-import exp from 'constants';
-import ts from 'typescript';
 
 describe('A steady energy load', () => {
   test('should require a constant load at any time', () => {
@@ -127,4 +124,64 @@ describe('A Wind Turbine Factory', () => {
     expect(factory.getBuilt()).toBe(0);
     expect(factory.load()).toBe(0);
   });
+
+  test('should consume 1MW of energy per windmill built', () => {
+    const factory = new tx.WindTurbineFactory();
+
+    factory.build();
+    expect(factory.getConsumption()).toBe(1 * factory.BUILD_LOAD);
+    expect(factory.getBuilt()).toBe(1);
+    expect(factory.load()).toBe(1 * factory.BUILD_LOAD);
+
+    factory.iterate();
+
+    expect(factory.getConsumption()).toBe(1 * factory.BUILD_LOAD);
+    expect(factory.getBuilt()).toBe(1);
+    expect(factory.load()).toBe(0);
+
+    factory.build();
+    factory.build();
+
+    expect(factory.getConsumption()).toBe(3 * factory.BUILD_LOAD);
+    expect(factory.getBuilt()).toBe(3);
+    expect(factory.load()).toBe(2 * factory.BUILD_LOAD);
+
+    factory.iterate();
+
+    expect(factory.getConsumption()).toBe(3 * factory.BUILD_LOAD);
+    expect(factory.getBuilt()).toBe(3);
+    expect(factory.load()).toBe(0);
+  });
+});
+
+describe('A grid', () => {
+  test('should be able to connect to different sources and consume them', () => {
+    const windmill1 = new tx.WindTurbine();
+    const windmill2 = new tx.WindTurbine();
+    const windmill3 = new tx.WindTurbine();
+
+    const grid = new tx.Grid(
+      [new tx.SteadyEnergyUsage(2)],
+      [windmill1, windmill2, windmill3],
+    );
+
+    expect(grid.getConsumption()).toBe(0);
+    expect(grid.countSources()).toBe(3);
+
+    grid.iterate();
+
+    expect(grid.getConsumption()).toBe(2);
+    expect(grid.countSources()).toBe(3);
+
+    grid.connect(new tx.WindTurbine());
+
+    expect(grid.getConsumption()).toBe(2);
+    expect(grid.countSources()).toBe(4);
+
+    grid.iterate();
+
+    expect(grid.getConsumption()).toBe(4);
+  });
+
+  test('should prevent over consumption', () => {});
 });

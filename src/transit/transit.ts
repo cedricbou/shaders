@@ -24,8 +24,10 @@ export class WindTurbineFactory implements Load {
   private built: number = 0;
   private consumption: number = 0;
 
+  public readonly BUILD_LOAD = 80;
+
   public load(): number {
-    return 80 * this.builtSinceLastIteration;
+    return this.BUILD_LOAD * this.builtSinceLastIteration;
   }
 
   public build(): WindTurbine {
@@ -44,7 +46,7 @@ export class WindTurbineFactory implements Load {
   }
 
   public getConsumption(): number {
-    return this.consumption;
+    return this.consumption + this.load();
   }
 }
 
