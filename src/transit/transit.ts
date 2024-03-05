@@ -9,6 +9,26 @@ export interface Load {
   iterate(): void;
 }
 
+export interface Overloadable {
+  /**
+   * Indicate is the source is overloaded.
+   * An overloaded source should not be used to provide energy.
+   * @returns true if the source is overloaded
+   */
+  isOverloaded(): boolean;
+
+  /**
+   * Indicate the number of time the source has been overloaded.
+   */
+  getOverloadCount(): number;
+
+  /**
+   * Rearm the source to allow it to be used again.
+   * It must reset the overloaded flag.
+   */
+  rearm(): void;
+}
+
 export class SteadyEnergyUsage implements Load {
   constructor(private readonly loadValue: number = 1000) {}
 
@@ -50,25 +70,55 @@ export class WindTurbineFactory implements Load {
   }
 }
 
-export class EnergySource {
+export class EnergySource implements Overloadable {
+  private overloadCount: number = 0;
+
+  // The iteration amount of energy consumed kept for rollback.
+  private lastConsumption: number = 0;
+
+  // The iteration overloaded flag, reset on prepare.
+  private overloaded: boolean = false;
+
+  // The flag to check if an interation transaction is in progress.
+
   constructor(
     private energyQuantity: number,
     private readonly energyCapacity: number,
   ) {}
 
   public iterate(load: number): number {
+    // Reset last consumption
+    this.lastConsumption = 0;
+
+    // Protect and prevent usage of source when out of energy
     if (this.outOfEnergy()) {
       throw new Error('Out of energy');
     }
 
-    const applicable = Math.min(
-      this.energyQuantity,
-      Math.min(this.energyCapacity, load),
-    );
+    // Prevent overloaded source to be used
+    if (this.isOverloaded()) {
+      throw new Error('Overloaded');
+    }
 
-    this.energyQuantity -= applicable;
+    // Check for overload, no load is consumed in this case.
+    if (load > this.energyCapacity) {
+      this.overloaded = true;
+      this.overloadCount++;
+      return load;
+    }
 
-    return load - applicable;
+    // Record last consumption to allow rollback
+    this.lastConsumption = Math.min(this.energyQuantity, load);
+
+    // Energy has been consummed.
+    this.energyQuantity -= this.lastConsumption;
+
+    return load - this.lastConsumption;
+  }
+
+  public rollback() {
+    this.energyQuantity += this.lastConsumption;
+    this.overloaded = false;
   }
 
   public outOfEnergy(): boolean {
@@ -77,6 +127,18 @@ export class EnergySource {
 
   public getEnergyQuantity(): number {
     return this.energyQuantity;
+  }
+
+  public isOverloaded(): boolean {
+    return this.overloaded;
+  }
+
+  public getOverloadCount(): number {
+    return this.overloadCount;
+  }
+
+  public rearm() {
+    this.overloaded = false;
   }
 }
 
@@ -104,9 +166,25 @@ export class Grid {
     return this.loads.reduce((acc, load) => acc + load.load(), 0);
   }
 
+  /** Count include in service or overloaded sources but excloude out of energy
+   * @returns the number of sources not out of energy
+   */
   public countSources(): number {
     return this.sources.reduce(
-      (acc, source) => acc + (source.outOfEnergy() ? 0 : 1),
+      (acc, source) =>
+        acc + (source.outOfEnergy() || source.isOverloaded() ? 0 : 1),
+      0,
+    );
+  }
+
+  /**
+   * Exploitable sources are sources that are not out of energy and not overloaded.
+   * @returns the number of exploitable sources
+   */
+  public countExploitableSources(): number {
+    return this.sources.reduce(
+      (acc, source) =>
+        acc + (source.outOfEnergy() || source.isOverloaded() ? 0 : 1),
       0,
     );
   }
@@ -116,12 +194,12 @@ export class Grid {
   }
 
   private shareLoad(load: number): number {
-    const count = this.countSources();
+    const count = this.countExploitableSources();
     const shared = load / count;
     let remaining = 0;
 
     this.sources.forEach((source) => {
-      if (!source.outOfEnergy()) {
+      if (!source.outOfEnergy() && !source.isOverloaded()) {
         remaining += source.iterate(shared);
       }
     });
@@ -130,17 +208,23 @@ export class Grid {
   }
 
   public iterate() {
-    let remaining = this.sumLoads();
-    this.consumption += remaining;
+    const targetLoad = this.sumLoads();
 
-    while (remaining > 0 && this.countSources() > 0) {
+    this.consumption += targetLoad;
+
+    let remaining = this.shareLoad(targetLoad);
+
+    while (remaining > 0 && this.countExploitableSources() > 0) {
       remaining = this.shareLoad(remaining);
     }
 
-    this.consumption -= remaining;
+    if (remaining > 0) {
+      this.sources.forEach((source) => source.rollback());
+      this.consumption -= targetLoad;
+    }
 
     this.garbageSources();
-
+    this.rearmSources();
     this.loads.forEach((load) => load.iterate());
   }
 
@@ -154,6 +238,10 @@ export class Grid {
 
   public getConsumption(): number {
     return this.consumption;
+  }
+
+  public rearmSources() {
+    this.sources.forEach((source) => source.rearm());
   }
 }
 
@@ -177,7 +265,7 @@ export class Simulation {
     this.ellapsedHours++;
 
     // Built 5 new wind turbines yearly
-    if (this.ellapsedHours % 50 === 0) {
+    if (this.ellapsedHours % 100 === 0) {
       const turbine = this.windTurbineFactory.build();
       this.grid.connect(turbine);
     }

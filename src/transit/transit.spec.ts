@@ -46,31 +46,6 @@ describe('An energy source', () => {
     expect(remaining3).toBe(0);
   });
 
-  test('should cap the load to its capacity when overloaded', () => {
-    const totalQuanity = 10000;
-    const maximumCapacity = 100;
-    const source = new tx.EnergySource(totalQuanity, maximumCapacity);
-
-    const testLoad1 = 150;
-    const testLoad2 = 200;
-    const testLoad3 = 120;
-
-    const remaining1 = source.iterate(testLoad1);
-    expect(source.outOfEnergy()).toBe(false);
-    expect(source.getEnergyQuantity()).toBe(totalQuanity - maximumCapacity);
-    expect(remaining1).toBe(testLoad1 - maximumCapacity);
-
-    const remaining2 = source.iterate(testLoad2);
-    expect(source.outOfEnergy()).toBe(false);
-    expect(source.getEnergyQuantity()).toBe(totalQuanity - maximumCapacity * 2);
-    expect(remaining2).toBe(testLoad2 - maximumCapacity);
-
-    const remaining3 = source.iterate(testLoad3);
-    expect(source.outOfEnergy()).toBe(false);
-    expect(source.getEnergyQuantity()).toBe(totalQuanity - maximumCapacity * 3);
-    expect(remaining3).toBe(testLoad3 - maximumCapacity);
-  });
-
   // TODO: Actually we should clarify the behavior when a load is above the capacity
   //       Should we disconnect the source, like in real life ?
   //       Or should we just cap the load to the capacity, like it's done for now.
@@ -79,7 +54,7 @@ describe('An energy source', () => {
     const maximumCapacity = 300;
     const source = new tx.EnergySource(totalQuanity, maximumCapacity);
 
-    const testLoad = 10000;
+    const testLoad = 300;
 
     const remaining = source.iterate(testLoad);
 
@@ -89,14 +64,68 @@ describe('An energy source', () => {
     expect(() => source.iterate(1)).toThrow('Out of energy');
   });
 
+  test('should be able to rollback the last iteration under normal load condition', () => {
+    const totalQuantity = 10000;
+    const maximumCapacity = 100;
+    const source = new tx.EnergySource(totalQuantity, maximumCapacity);
+
+    const testLoad = 50;
+
+    const remaining = source.iterate(testLoad);
+    expect(source.getEnergyQuantity()).toBe(totalQuantity - testLoad);
+    expect(remaining).toBe(0);
+
+    source.rollback();
+
+    expect(source.getEnergyQuantity()).toBe(totalQuantity);
+  });
+
+  test('shoud indicate when overloaded', () => {
+    const totalQuantity = 10000;
+    const maximumCapacity = 100;
+    const source = new tx.EnergySource(totalQuantity, maximumCapacity);
+
+    const testLoad = 150;
+
+    const remaining = source.iterate(testLoad);
+
+    expect(source.isOverloaded()).toBe(true);
+    expect(source.getOverloadCount()).toBe(1);
+    expect(source.getEnergyQuantity()).toBe(totalQuantity);
+    expect(remaining).toBe(testLoad);
+  });
+
+  test('should be able to rollback the last iteration under overload condition', () => {
+    const totalQuantity = 10000;
+    const maximumCapacity = 100;
+    const source = new tx.EnergySource(totalQuantity, maximumCapacity);
+
+    const testLoad = 150;
+
+    const remaining = source.iterate(testLoad);
+
+    expect(source.getEnergyQuantity()).toBe(totalQuantity);
+    expect(source.isOverloaded()).toBe(true);
+    expect(remaining).toBe(testLoad);
+
+    source.rollback();
+
+    expect(source.getEnergyQuantity()).toBe(totalQuantity);
+    expect(source.isOverloaded()).toBe(false);
+  });
+
   test('acting as a Windmill should be able to produce 1MW of energy per iteration and up to 50GW throuhg its life', () => {
     const windmill = new tx.WindTurbine();
 
     expect(windmill.getEnergyQuantity()).toBe(50000);
 
-    expect(windmill.iterate(2)).toBe(1);
-    expect(windmill.iterate(5)).toBe(4);
     expect(windmill.iterate(1)).toBe(0);
+    expect(windmill.iterate(0.8)).toBe(0);
+    expect(windmill.isOverloaded()).toBe(false);
+
+    windmill.iterate(1.1);
+
+    expect(windmill.isOverloaded()).toBe(true);
   });
 
   test('acting as a Coal Power Plant should be able to produce 1GW of energy per iteration and up to 219GW throuhg its life', () => {
@@ -104,9 +133,13 @@ describe('An energy source', () => {
 
     expect(plant.getEnergyQuantity()).toBe(219000000);
 
-    expect(plant.iterate(2000)).toBe(1000);
-    expect(plant.iterate(4000)).toBe(3000);
     expect(plant.iterate(1000)).toBe(0);
+    expect(plant.iterate(800)).toBe(0);
+    expect(plant.isOverloaded()).toBe(false);
+
+    plant.iterate(1100);
+
+    expect(plant.isOverloaded()).toBe(true);
   });
 });
 
@@ -183,5 +216,59 @@ describe('A grid', () => {
     expect(grid.getConsumption()).toBe(4);
   });
 
-  test('should prevent over consumption', () => {});
+  test('should share loads of non overloaded resource in case over consumption of one of the source, if the left sources supports it, it succeed', () => {
+    const windmill1 = new tx.WindTurbine();
+    const windmill2 = new tx.WindTurbine();
+    const windmill3 = new tx.WindTurbine();
+    const customEnergySource = new tx.EnergySource(100, 5);
+
+    const grid = new tx.Grid(
+      [new tx.SteadyEnergyUsage(5)],
+      [windmill1, windmill2, windmill3, customEnergySource],
+    );
+
+    expect(windmill1.getOverloadCount()).toBe(0);
+    expect(windmill2.getOverloadCount()).toBe(0);
+    expect(windmill3.getOverloadCount()).toBe(0);
+    expect(customEnergySource.getOverloadCount()).toBe(0);
+    expect(grid.getConsumption()).toBe(0);
+
+    grid.iterate();
+
+    expect(windmill1.getOverloadCount()).toBe(1);
+    expect(windmill2.getOverloadCount()).toBe(1);
+    expect(windmill3.getOverloadCount()).toBe(1);
+    expect(customEnergySource.getOverloadCount()).toBe(0);
+    expect(grid.getConsumption()).toBe(5);
+    expect(grid.countSources()).toBe(4);
+    expect(grid.countExploitableSources()).toBe(4);
+  });
+
+  test('should share loads of non overloaded resource in case over consumption of one of the source, if the left sources does supports it, it fails', () => {
+    const windmill1 = new tx.WindTurbine();
+    const windmill2 = new tx.WindTurbine();
+    const windmill3 = new tx.WindTurbine();
+    const customEnergySource = new tx.EnergySource(100, 3);
+
+    const grid = new tx.Grid(
+      [new tx.SteadyEnergyUsage(6)],
+      [windmill1, windmill2, windmill3, customEnergySource],
+    );
+
+    expect(windmill1.getOverloadCount()).toBe(0);
+    expect(windmill2.getOverloadCount()).toBe(0);
+    expect(windmill3.getOverloadCount()).toBe(0);
+    expect(customEnergySource.getOverloadCount()).toBe(0);
+    expect(grid.getConsumption()).toBe(0);
+
+    grid.iterate();
+
+    expect(windmill1.getOverloadCount()).toBe(1);
+    expect(windmill2.getOverloadCount()).toBe(1);
+    expect(windmill3.getOverloadCount()).toBe(1);
+    expect(customEnergySource.getOverloadCount()).toBe(1);
+    expect(grid.getConsumption()).toBe(0);
+    expect(grid.countSources()).toBe(4);
+    expect(grid.countExploitableSources()).toBe(4);
+  });
 });
