@@ -43,6 +43,7 @@ export class Simulation {
     progressCallback?.(this.ellapsedHours, SimulationStatus.Start);
     while (
       !this.grid.isOutOfEnergy() &&
+      !this.grid.isOverloaded() &&
       this.ellapsedHours < this.maxIteration
     ) {
       this.iterate();

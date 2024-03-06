@@ -37,8 +37,10 @@ function printUpdatedResultsInPlace(
     '\r' +
       '◇'.repeat(80) +
       '\n' +
+      (grid.isOverloaded() ? '==> [X] Grid is overloaded\n' : '') +
       `Total consumption: ${(grid.getConsumption() / 1000).toFixed(3)} GWh \n` +
       `Total wind turbines: ${windTurbineFactory.getBuilt()} \n` +
+      `Total overloaded sources: ${grid.getSourceOverloadedIncidents()} \n` +
       `Total sources left: ${grid.countSources()} \n` +
       `Total ellapsed hours: ${ellapsedHours}, around ${
         ellapsedHours / 24 / 365.25

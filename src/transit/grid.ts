@@ -1,7 +1,10 @@
-import { EnergySource, Load } from './energy';
+import { EnergySource, Load, Overloadable } from './energy';
 
-export class Grid {
+export class Grid implements Overloadable {
   private consumption: number = 0;
+
+  private overloaded: boolean = false;
+  private overloadCount: number = 0;
 
   constructor(
     private readonly loads: Array<Load>,
@@ -19,6 +22,13 @@ export class Grid {
     return this.sources.reduce(
       (acc, source) =>
         acc + (source.outOfEnergy() || source.isOverloaded() ? 0 : 1),
+      0,
+    );
+  }
+
+  public getSourceOverloadedIncidents(): number {
+    return this.sources.reduce(
+      (acc, source) => acc + source.getOverloadCount(),
       0,
     );
   }
@@ -54,6 +64,10 @@ export class Grid {
   }
 
   public iterate() {
+    if (this.isOverloaded()) {
+      throw new Error('Overloaded');
+    }
+
     const targetLoad = this.sumLoads();
 
     this.consumption += targetLoad;
@@ -65,6 +79,9 @@ export class Grid {
     }
 
     if (remaining > 0) {
+      this.overloaded = true;
+      this.overloadCount++;
+
       this.sources.forEach((source) => source.rollback());
       this.consumption -= targetLoad;
     }
@@ -86,7 +103,20 @@ export class Grid {
     return this.consumption;
   }
 
-  public rearmSources() {
+  public rearm() {
+    this.overloaded = false;
     this.sources.forEach((source) => source.rearm());
+  }
+
+  private rearmSources() {
+    this.sources.forEach((source) => source.rearm());
+  }
+
+  public isOverloaded(): boolean {
+    return this.overloaded;
+  }
+
+  public getOverloadCount(): number {
+    return this.overloadCount;
   }
 }

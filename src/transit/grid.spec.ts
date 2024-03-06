@@ -86,4 +86,27 @@ describe('A grid', () => {
     expect(grid.countSources()).toBe(4);
     expect(grid.countExploitableSources()).toBe(4);
   });
+
+  test('should overload when it is not able to provide the requested load', () => {
+    const source1 = new tx.EnergySource(5, 1);
+    const source2 = new tx.EnergySource(5, 1);
+    const source3 = new tx.EnergySource(5, 1);
+
+    const grid = new tx.Grid(
+      [new tx.SteadyEnergyUsage(5)],
+      [source1, source2, source3],
+    );
+
+    expect(grid.getConsumption()).toBe(0);
+
+    grid.iterate();
+
+    expect(grid.getConsumption()).toBe(0);
+    expect(grid.isOverloaded()).toBe(true);
+    expect(grid.getOverloadCount()).toBe(1);
+
+    expect(() => {
+      grid.iterate();
+    }).toThrowError('Overloaded');
+  });
 });
