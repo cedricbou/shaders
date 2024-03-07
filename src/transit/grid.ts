@@ -20,15 +20,7 @@ export class Grid implements Overloadable {
    */
   public countSources(): number {
     return this.sources.reduce(
-      (acc, source) =>
-        acc + (source.outOfEnergy() || source.isOverloaded() ? 0 : 1),
-      0,
-    );
-  }
-
-  public getSourceOverloadedIncidents(): number {
-    return this.sources.reduce(
-      (acc, source) => acc + source.getOverloadCount(),
+      (acc, source) => acc + (source.outOfEnergy() ? 0 : 1),
       0,
     );
   }
@@ -45,6 +37,13 @@ export class Grid implements Overloadable {
     );
   }
 
+  public getSourceOverloadedIncidents(): number {
+    return this.sources.reduce(
+      (acc, source) => acc + source.getOverloadCount(),
+      0,
+    );
+  }
+
   private garbageSources() {
     this.sources = this.sources.filter((source) => !source.outOfEnergy());
   }
@@ -52,15 +51,29 @@ export class Grid implements Overloadable {
   private shareLoad(load: number): number {
     const count = this.countExploitableSources();
     const shared = load / count;
-    let remaining = 0;
+    return shared;
+  }
+
+  private consumeLoad(load: number): boolean {
+    let overload = false;
+
+    const consumedSources: EnergySource[] = [];
 
     this.sources.forEach((source) => {
       if (!source.outOfEnergy() && !source.isOverloaded()) {
-        remaining += source.iterate(shared);
+        if (source.iterate(load) > 0) {
+          overload = true;
+        } else {
+          consumedSources.push(source);
+        }
       }
     });
 
-    return remaining;
+    if (overload) {
+      consumedSources.forEach((source) => source.rollback());
+    }
+
+    return !overload;
   }
 
   public iterate() {
@@ -72,22 +85,26 @@ export class Grid implements Overloadable {
 
     this.consumption += targetLoad;
 
-    let remaining = this.shareLoad(targetLoad);
+    let sharedLoad = this.shareLoad(targetLoad);
 
-    while (remaining > 0 && this.countExploitableSources() > 0) {
-      remaining = this.shareLoad(remaining);
+    // While there are exploitable sources
+    // and an overload was detected, retry
+    while (
+      this.countExploitableSources() > 0 &&
+      !this.consumeLoad(sharedLoad)
+    ) {
+      sharedLoad = this.shareLoad(targetLoad);
     }
 
-    if (remaining > 0) {
+    if (this.countExploitableSources() == 0) {
       this.overloaded = true;
       this.overloadCount++;
-
-      this.sources.forEach((source) => source.rollback());
       this.consumption -= targetLoad;
+    } else {
+      this.rearmSources();
     }
 
     this.garbageSources();
-    this.rearmSources();
     this.loads.forEach((load) => load.iterate());
   }
 

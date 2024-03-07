@@ -31,7 +31,7 @@ export class Simulation {
     this.ellapsedHours++;
 
     // Built 5 new wind turbines yearly
-    if (this.ellapsedHours % 100 === 0) {
+    if (this.ellapsedHours % 75 === 0) {
       const turbine = this.windTurbineFactory.build();
       this.grid.connect(turbine);
     }

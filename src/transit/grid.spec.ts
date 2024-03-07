@@ -32,59 +32,57 @@ describe('A grid', () => {
   });
 
   test('should share loads of non overloaded resource in case over consumption of one of the source, if the left sources supports it, it succeed', () => {
-    const windmill1 = new tx.WindTurbine();
-    const windmill2 = new tx.WindTurbine();
-    const windmill3 = new tx.WindTurbine();
-    const customEnergySource = new tx.EnergySource(100, 5);
+    const s1 = new tx.EnergySource(100, 3);
+    const s2 = new tx.EnergySource(100, 1);
+    const s3 = new tx.EnergySource(100, 3);
 
-    const grid = new tx.Grid(
-      [new tx.SteadyEnergyUsage(5)],
-      [windmill1, windmill2, windmill3, customEnergySource],
-    );
+    const grid = new tx.Grid([new tx.SteadyEnergyUsage(6)], [s1, s2, s3]);
 
-    expect(windmill1.getOverloadCount()).toBe(0);
-    expect(windmill2.getOverloadCount()).toBe(0);
-    expect(windmill3.getOverloadCount()).toBe(0);
-    expect(customEnergySource.getOverloadCount()).toBe(0);
+    expect(s1.getOverloadCount()).toBe(0);
+    expect(s2.getOverloadCount()).toBe(0);
+    expect(s3.getOverloadCount()).toBe(0);
     expect(grid.getConsumption()).toBe(0);
 
     grid.iterate();
 
-    expect(windmill1.getOverloadCount()).toBe(1);
-    expect(windmill2.getOverloadCount()).toBe(1);
-    expect(windmill3.getOverloadCount()).toBe(1);
-    expect(customEnergySource.getOverloadCount()).toBe(0);
-    expect(grid.getConsumption()).toBe(5);
-    expect(grid.countSources()).toBe(4);
-    expect(grid.countExploitableSources()).toBe(4);
+    expect(s1.getOverloadCount()).toBe(0);
+    expect(s2.getOverloadCount()).toBe(1);
+    expect(s3.getOverloadCount()).toBe(0);
+
+    expect(grid.getOverloadCount()).toBe(0);
+    expect(grid.isOverloaded()).toBe(false);
+
+    expect(grid.getConsumption()).toBe(6);
+    // Sources are rearmed automatically
+    expect(grid.countExploitableSources()).toBe(3);
+    expect(grid.countSources()).toBe(3);
   });
 
-  test('should share loads of non overloaded resource in case over consumption of one of the source, if the left sources does supports it, it fails', () => {
-    const windmill1 = new tx.WindTurbine();
-    const windmill2 = new tx.WindTurbine();
-    const windmill3 = new tx.WindTurbine();
-    const customEnergySource = new tx.EnergySource(100, 3);
+  test('should share loads of non overloaded resource in case over consumption of one of the source, if the left sources does not supports it, it fails', () => {
+    const s1 = new tx.EnergySource(100, 3);
+    const s2 = new tx.EnergySource(100, 1);
+    const s3 = new tx.EnergySource(100, 3);
 
-    const grid = new tx.Grid(
-      [new tx.SteadyEnergyUsage(6)],
-      [windmill1, windmill2, windmill3, customEnergySource],
-    );
+    const grid = new tx.Grid([new tx.SteadyEnergyUsage(7)], [s1, s2, s3]);
 
-    expect(windmill1.getOverloadCount()).toBe(0);
-    expect(windmill2.getOverloadCount()).toBe(0);
-    expect(windmill3.getOverloadCount()).toBe(0);
-    expect(customEnergySource.getOverloadCount()).toBe(0);
+    expect(s1.getOverloadCount()).toBe(0);
+    expect(s2.getOverloadCount()).toBe(0);
+    expect(s3.getOverloadCount()).toBe(0);
     expect(grid.getConsumption()).toBe(0);
 
     grid.iterate();
 
-    expect(windmill1.getOverloadCount()).toBe(1);
-    expect(windmill2.getOverloadCount()).toBe(1);
-    expect(windmill3.getOverloadCount()).toBe(1);
-    expect(customEnergySource.getOverloadCount()).toBe(1);
+    expect(s1.getOverloadCount()).toBe(1);
+    expect(s2.getOverloadCount()).toBe(1);
+    expect(s3.getOverloadCount()).toBe(1);
+
     expect(grid.getConsumption()).toBe(0);
-    expect(grid.countSources()).toBe(4);
-    expect(grid.countExploitableSources()).toBe(4);
+
+    expect(grid.getOverloadCount()).toBe(1);
+    expect(grid.isOverloaded()).toBe(true);
+
+    expect(grid.countExploitableSources()).toBe(0);
+    expect(grid.countSources()).toBe(3);
   });
 
   test('should overload when it is not able to provide the requested load', () => {
